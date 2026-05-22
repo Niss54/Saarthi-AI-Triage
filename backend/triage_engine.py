@@ -33,10 +33,11 @@ def get_triage(patient_data: dict) -> dict:
     try:
         response = model.generate_content(TRIAGE_PROMPT.format(patient_data=json.dumps(patient_data)))
         text = response.text.strip()
-        if text.startswith("```json"): text = text[7:]
-        if text.startswith("```"): text = text[3:]
-        if text.endswith("```"): text = text[:-3]
-        return json.loads(text.strip())
+        import re
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+        return json.loads(text)
     except Exception as e:
         print("Gemini Triage failed:", e)
         complaint = patient_data.get("chief_complaint", "").lower()
@@ -56,10 +57,11 @@ def get_insights(queue_snapshot: list) -> list:
         subset = queue_snapshot[:20]
         response = model.generate_content(INSIGHTS_PROMPT.format(queue_snapshot=json.dumps(subset)))
         text = response.text.strip()
-        if text.startswith("```json"): text = text[7:]
-        if text.startswith("```"): text = text[3:]
-        if text.endswith("```"): text = text[:-3]
-        return json.loads(text.strip())
+        import re
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+        return json.loads(text)
     except Exception as e:
         print("Gemini Insights failed:", e)
         return [
