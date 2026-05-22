@@ -107,11 +107,14 @@ def get_insights(queue_snapshot: List[Dict[str, Any]]) -> List[Dict[str, str]]:
             raise ValueError('Invalid insights shape')
         insights = []
         for item in raw:
+            severity = str(item.get('severity', 'low')).lower()
+            if severity not in {'high', 'medium', 'low'}:
+                severity = 'low'
             insights.append(
                 {
-                    'icon': str(item.get('icon', '')), 
+                    'icon': str(item.get('icon', '')),
                     'message': str(item.get('message', '')),
-                    'severity': str(item.get('severity', 'low')).lower(),
+                    'severity': severity,
                 }
             )
         return insights

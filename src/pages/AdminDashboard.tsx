@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Stethoscope, UserPlus, Activity, Clock, AlertTriangle, Users, BarChart3 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Stethoscope, UserPlus, Activity, Clock, AlertTriangle, Users, BarChart3, WifiOff } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 import { QueueItem, Department, Insight, ActivityFeedItem, StatsData } from '../types';
 import { getQueue, addSimulatedPatient, getDepartments, getStats, getInsights, getFeed } from '../api/client';
-import { mockQueue, mockDepartments, mockInsights, mockFeed, mockStats } from '../data/mockData';
 
 function AnimatedCounter({ target, duration = 2000, suffix = '' }: { target: number; duration?: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -26,48 +25,79 @@ function AnimatedCounter({ target, duration = 2000, suffix = '' }: { target: num
 }
 
 export default function AdminDashboard() {
-  const [queue, setQueue] = useState<QueueItem[]>(mockQueue);
-  const [departments] = useState<Department[]>(mockDepartments);
-  const [insights] = useState<Insight[]>(mockInsights);
-  const [feed] = useState<ActivityFeedItem[]>(mockFeed);
-  const [stats] = useState<StatsData>(mockStats);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [feed, setFeed] = useState<ActivityFeedItem[]>([]);
+  const [stats, setStats] = useState<StatsData>({ totalToday: 0, avgWaitTime: 0, criticalCount: 0, activeDepartments: 0 });
   const [clock, setClock] = useState(new Date());
+  const [wsConnected, setWsConnected] = useState(false);
+  
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Live clock
   useEffect(() => {
     const timer = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  const fetchAllData = useCallback(async () => {
+    try {
+      const [d, s, i, f] = await Promise.all([
+        getDepartments(),
+        getStats(),
+        getInsights(),
+        getFeed()
+      ]);
+      setDepartments(d);
+      setStats(s);
+      setInsights(i);
+      setFeed(f);
+    } catch (err) {
+      toast.error('⚠️ Connection issue — showing cached data', { id: 'api-err' });
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllData();
+    const interval = setInterval(fetchAllData, 60000);
+    return () => clearInterval(interval);
+  }, [fetchAllData]);
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/ws/queue');
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      setWsConnected(true);
+      toast.success('Live connection established', { id: 'ws-conn' });
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setQueue(data);
+    };
+
+    ws.onclose = () => {
+      setWsConnected(false);
+      toast.error('🔴 Live updates disconnected', { id: 'ws-conn' });
+    };
+
+    return () => ws.close();
+  }, []);
+
   const handleSimulate = useCallback(async () => {
     try {
-      const newPatient = await addSimulatedPatient();
-      setQueue(prev => [newPatient, ...prev]);
-      toast.success(`🏥 New patient: ${newPatient.name} — ${newPatient.triageLevel.toUpperCase()}`, {
-        style: {
-          background: '#0f2040',
-          color: '#fff',
-          border: '1px solid rgba(0, 212, 170, 0.3)',
-        },
-        iconTheme: {
-          primary: '#00d4aa',
-          secondary: '#0f2040',
-        },
-      });
-      if (newPatient.triageLevel === 'critical') {
-        toast.error(`🚨 CRITICAL: ${newPatient.name} routed to Emergency!`, {
-          duration: 5000,
-          style: {
-            background: '#1a0a0a',
-            color: '#ef4444',
-            border: '1px solid rgba(239, 68, 68, 0.5)',
-          },
-        });
+      if (wsRef.current && wsConnected) {
+        wsRef.current.send(JSON.stringify({ action: "add_patient" }));
+        toast.success(`🏥 Simulating new patient...`);
+      } else {
+        await addSimulatedPatient();
+        toast.success(`🏥 Simulating new patient...`);
       }
     } catch (err) {
       toast.error('Failed to add patient');
     }
-  }, []);
+  }, [wsConnected]);
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { className: string; label: string }> = {
@@ -97,16 +127,11 @@ export default function AdminDashboard() {
   }));
 
   const clockStr = clock.toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-    timeZone: 'Asia/Kolkata',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
   });
 
   return (
     <div className="page-container">
-      {/* Header */}
       <div className="dashboard-header">
         <div className="title-section">
           <h1>
@@ -117,14 +142,13 @@ export default function AdminDashboard() {
         </div>
         <div className="status-section">
           <div className="live-clock">{clockStr}</div>
-          <div className="status-badge">
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
-            System Active
+          <div className="status-badge" style={!wsConnected ? { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' } : {}}>
+            {!wsConnected ? <WifiOff size={14} /> : <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>}
+            {wsConnected ? 'System Active' : 'Disconnected'}
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card" style={{ animationDelay: '0s' }}>
           <Users size={24} color="#00d4aa" />
@@ -148,7 +172,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Queue Board */}
       <div className="glass-card" style={{ marginBottom: 24, padding: 0, overflow: 'hidden' }}>
         <div className="section-header" style={{ padding: '20px 24px 0' }}>
           <h2 className="section-title">
@@ -205,9 +228,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Bottom Grid: Chart + Insights */}
       <div className="dashboard-grid">
-        {/* Department Load Chart */}
         <div className="glass-card">
           <h2 className="section-title" style={{ marginBottom: 20 }}>
             <BarChart3 size={20} color="#00d4aa" />
@@ -236,15 +257,15 @@ export default function AdminDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* AI Insights + Feed */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* AI Insights */}
           <div>
             <h2 className="section-title" style={{ marginBottom: 12 }}>
               🧠 AI Insights
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {insights.map((insight, i) => (
+              {insights.length === 0 ? (
+                <div style={{ color: '#94a3b8', fontSize: 13, padding: 16, textAlign: 'center' }}>Loading insights...</div>
+              ) : insights.map((insight, i) => (
                 <div key={i} className={`insight-card severity-${insight.severity}`} style={{ animation: `slideInRight 0.4s ease-out ${i * 0.1}s both` }}>
                   <span style={{ fontSize: 24 }}>{insight.icon}</span>
                   <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.5 }}>{insight.message}</p>
@@ -253,13 +274,14 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Recent Activity Feed */}
           <div className="glass-card" style={{ padding: 0 }}>
             <h2 className="section-title" style={{ padding: '16px 20px 8px' }}>
               📋 Recent Triage Activity
             </h2>
             <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-              {feed.map((item, i) => (
+              {feed.length === 0 ? (
+                <div style={{ color: '#94a3b8', fontSize: 13, padding: 16, textAlign: 'center' }}>Loading feed...</div>
+              ) : feed.map((item, i) => (
                 <div key={i} className="feed-item">
                   <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 12, minWidth: 70 }}>{item.time}</span>
                   <span style={{ color: '#00d4aa', fontWeight: 600, fontFamily: 'monospace', fontSize: 12, minWidth: 75 }}>#{item.token}</span>

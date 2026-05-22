@@ -194,6 +194,14 @@ export default function PatientPortal() {
                   <span className="label">Queue Position</span>
                   <span style={{ fontWeight: 600 }}>#{msg.triageResult.queuePosition}</span>
                 </div>
+
+                {msg.triageResult.aiReasoning && (
+                  <details className="ai-reasoning" style={{ margin: '12px 0', padding: '8px', background: 'rgba(0, 212, 170, 0.1)', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(0, 212, 170, 0.2)' }}>
+                    <summary style={{ cursor: 'pointer', color: '#00d4aa', fontWeight: 600 }}>🤖 How was this decided?</summary>
+                    <p style={{ marginTop: 8, color: '#e2e8f0', lineHeight: 1.4 }}>{msg.triageResult.aiReasoning}</p>
+                  </details>
+                )}
+
                 <div className="message">
                   {msg.triageResult.message}
                 </div>
