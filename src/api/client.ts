@@ -3,7 +3,7 @@ import { mockQueue, mockDepartments, mockInsights, mockFeed, mockStats, generate
 import { performTriage } from '../utils/triageLogic';
 
 const API_BASE = 'http://localhost:8000';
-const USE_REAL_API = false; // Toggle to true when backend is ready
+const USE_REAL_API = true; // Toggle to true when backend is ready
 
 // --- Triage ---
 export async function triagePatient(data: {
