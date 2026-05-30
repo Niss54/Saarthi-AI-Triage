@@ -101,7 +101,7 @@ export default function PatientPortal() {
     }
   };
 
-  const handleDemoFill = async (caseType: 'critical' | 'moderate') => {
+  const handleDemoFill = async (caseType: 'critical' | 'moderate' | 'ortho') => {
     let demoAnswers: string[] = [];
     if (caseType === 'critical') {
       demoAnswers = ['Ramesh', '55', 'Male', 'Seene mein bahut dard hai aur saans lene mein takleef ho rahi hai', '2 hours', 'Haan', 'Nahi'];
@@ -122,7 +122,7 @@ export default function PatientPortal() {
         { id: '13', text: BOT_QUESTIONS[6], sender: 'bot', timestamp: '' },
         { id: '14', text: demoAnswers[6], sender: 'user', timestamp: '' }
       ]);
-    } else {
+    } else if (caseType === 'moderate') {
       demoAnswers = ['Sunita', '32', 'Female', 'Bukhar hai aur pet mein dard hai', '3 din', 'Haan', 'Nahi', 'Nahi'];
       setMessages([
         { id: '1', text: BOT_QUESTIONS[0], sender: 'bot', timestamp: '' },
@@ -141,6 +141,24 @@ export default function PatientPortal() {
         { id: '14', text: demoAnswers[6], sender: 'user', timestamp: '' },
         { id: '15', text: PREGNANCY_QUESTION, sender: 'bot', timestamp: '' },
         { id: '16', text: demoAnswers[7], sender: 'user', timestamp: '' }
+      ]);
+    } else {
+      demoAnswers = ['Rahul', '28', 'Male', 'Mera pair tod gaya hai, bahut dard hai', '1 din', 'Nahi', 'Nahi'];
+      setMessages([
+        { id: '1', text: BOT_QUESTIONS[0], sender: 'bot', timestamp: '' },
+        { id: '2', text: demoAnswers[0], sender: 'user', timestamp: '' },
+        { id: '3', text: BOT_QUESTIONS[1], sender: 'bot', timestamp: '' },
+        { id: '4', text: demoAnswers[1], sender: 'user', timestamp: '' },
+        { id: '5', text: BOT_QUESTIONS[2], sender: 'bot', timestamp: '' },
+        { id: '6', text: demoAnswers[2], sender: 'user', timestamp: '' },
+        { id: '7', text: BOT_QUESTIONS[3], sender: 'bot', timestamp: '' },
+        { id: '8', text: demoAnswers[3], sender: 'user', timestamp: '' },
+        { id: '9', text: BOT_QUESTIONS[4], sender: 'bot', timestamp: '' },
+        { id: '10', text: demoAnswers[4], sender: 'user', timestamp: '' },
+        { id: '11', text: BOT_QUESTIONS[5], sender: 'bot', timestamp: '' },
+        { id: '12', text: demoAnswers[5], sender: 'user', timestamp: '' },
+        { id: '13', text: BOT_QUESTIONS[6], sender: 'bot', timestamp: '' },
+        { id: '14', text: demoAnswers[6], sender: 'user', timestamp: '' }
       ]);
     }
     
@@ -425,14 +443,21 @@ export default function PatientPortal() {
           disabled={isLoading || triageComplete}
           style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#fca5a5', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer' }}
         >
-          Demo: Heart Attack (Critical)
+          Try: Chest Pain
         </button>
         <button 
           onClick={() => handleDemoFill('moderate')}
           disabled={isLoading || triageComplete}
           style={{ background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fde68a', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer' }}
         >
-          Demo: Fever (Moderate)
+          Try: Fever
+        </button>
+        <button 
+          onClick={() => handleDemoFill('ortho')}
+          disabled={isLoading || triageComplete}
+          style={{ background: 'rgba(59, 130, 246, 0.2)', border: '1px solid #3b82f6', color: '#bfdbfe', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer' }}
+        >
+          Try: Fracture
         </button>
       </div>
 

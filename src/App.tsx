@@ -12,6 +12,9 @@ function App() {
 
   return (
     <Router>
+      <div className="spline-bg" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1, opacity: 0.4, pointerEvents: 'none' }}>
+        <iframe src='https://my.spline.design/bganimation-SneN1YGDvvZ5jtSspTMwtlbU/' frameBorder='0' width='100%' height='100%' style={{ transform: 'scale(0.23)' }}></iframe>
+      </div>
       <Toaster
         position="top-right"
         toastOptions={{
