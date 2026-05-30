@@ -1,4 +1,4 @@
-import { QueueItem, TriageResult, Department, Insight, ActivityFeedItem, StatsData } from '../types';
+import type { QueueItem, TriageResult, Department, Insight, ActivityFeedItem, StatsData } from '../types';
 import { mockQueue, mockDepartments, mockInsights, mockFeed, mockStats, generateRandomPatient } from '../data/mockData';
 import { performTriage } from '../utils/triageLogic';
 

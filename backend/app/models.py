@@ -1,15 +1,13 @@
-from typing import Literal, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
+from typing import Optional, List, Literal
 
 TriageLevel = Literal['critical', 'moderate', 'mild']
 PatientStatus = Literal['waiting', 'called', 'in-consultation', 'done']
-DepartmentStatus = Literal['normal', 'busy', 'critical']
-InsightSeverity = Literal['high', 'medium', 'low']
-
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(populate_by_name=True, extra='ignore')
-
+    class Config:
+        populate_by_name = True
+        extra = "ignore"
 
 class Patient(ApiModel):
     id: str
@@ -17,103 +15,108 @@ class Patient(ApiModel):
     name: str
     age: int
     gender: Literal['Male', 'Female', 'Other']
-    chiefComplaint: str = Field(..., alias='chief_complaint')
+    chiefComplaint: str = Field(alias='chief_complaint')
     duration: str
-    hasCriticalSymptoms: bool = Field(..., alias='has_fever_chest_breathing')
-    onMedication: bool = Field(..., alias='on_medication')
-    isPregnant: Optional[bool] = Field(default=None, alias='is_pregnant')
+    hasCriticalSymptoms: bool = Field(alias='has_fever_chest_breathing', default=False)
+    onMedication: bool = Field(alias='on_medication', default=False)
+    isPregnant: Optional[bool] = Field(alias='is_pregnant', default=None)
     timestamp: str
 
-
 class TriageInput(ApiModel):
-    name: str = Field(..., min_length=1)
-    age: int = Field(..., ge=0, le=120)
+    name: str = Field(min_length=1)
+    age: int = Field(ge=0, le=120)
     gender: str
-    chiefComplaint: str = Field(..., alias='chief_complaint')
+    chiefComplaint: str = Field(alias='chief_complaint')
     duration: str
-    hasCriticalSymptoms: bool = Field(..., alias='has_fever_chest_breathing')
-    onMedication: bool = Field(..., alias='on_medication')
-    isPregnant: Optional[bool] = Field(default=None, alias='is_pregnant')
-
+    hasCriticalSymptoms: bool = Field(alias='has_fever_chest_breathing', default=False)
+    onMedication: bool = Field(alias='on_medication', default=False)
+    isPregnant: Optional[bool] = Field(alias='is_pregnant', default=None)
 
 class TriageResult(ApiModel):
     token: str
-    triageLevel: TriageLevel = Field(..., alias='triage_level')
+    triageLevel: TriageLevel
     department: str
-    waitTimeMinutes: int = Field(..., alias='wait_time_minutes')
-    queuePosition: int = Field(..., alias='queue_position')
+    waitTimeMinutes: int
+    queuePosition: int
     message: str
-    aiReasoning: Optional[str] = Field(default=None, alias='ai_reasoning')
+    aiReasoning: Optional[str] = None
     timestamp: str
-
+    assignedDoctor: Optional[str] = None
+    roomNumber: Optional[str] = None
+    isEmergency: Optional[bool] = False
+    urgencyReason: Optional[str] = None
+    recommendedAction: Optional[str] = None
 
 class TriageResponse(ApiModel):
     token: str
-    triageLevel: TriageLevel = Field(..., alias='triage_level')
+    triageLevel: TriageLevel
     department: str
-    waitTimeMinutes: int = Field(..., alias='wait_time_minutes')
-    queuePosition: int = Field(..., alias='queue_position')
-    aiReasoning: Optional[str] = Field(default=None, alias='ai_reasoning')
+    waitTimeMinutes: int
+    queuePosition: int
+    aiReasoning: Optional[str] = None
     timestamp: str
-
+    message: str # included in frontend response
+    assignedDoctor: Optional[str] = None
+    roomNumber: Optional[str] = None
+    isEmergency: Optional[bool] = False
+    urgencyReason: Optional[str] = None
+    recommendedAction: Optional[str] = None
 
 class QueueItem(ApiModel):
     id: str
     token: str
     name: str
     age: int
-    triageLevel: TriageLevel = Field(..., alias='triage_level')
-    chiefComplaint: str = Field(..., alias='chief_complaint')
+    triageLevel: TriageLevel
+    chiefComplaint: str = Field(alias='chief_complaint')
     department: str
-    waitTime: int = Field(..., alias='wait_time')
+    waitTime: int
     status: PatientStatus
     timestamp: str
-
+    assignedDoctor: Optional[str] = None
+    roomNumber: Optional[str] = None
+    isEmergency: Optional[bool] = False
 
 class Department(ApiModel):
     name: str
-    patientCount: int = Field(..., alias='patient_count')
-    avgWaitMinutes: int = Field(..., alias='avg_wait_minutes')
+    patientCount: int
+    avgWaitMinutes: int
     capacity: int
-    status: DepartmentStatus
-
+    status: Literal['normal', 'busy', 'critical']
 
 class Insight(ApiModel):
     icon: str
     message: str
-    severity: InsightSeverity
-
+    severity: Literal['high', 'medium', 'low']
 
 class ActivityFeedItem(ApiModel):
     time: str
     token: str
     name: str
-    triageLevel: TriageLevel = Field(..., alias='triage_level')
+    triageLevel: TriageLevel
     department: str
-
 
 class ChatMessage(ApiModel):
     id: str
     text: str
     sender: Literal['bot', 'user']
     timestamp: str
-    isTriageResult: Optional[bool] = Field(default=None, alias='is_triage_result')
-    triageResult: Optional[TriageResult] = Field(default=None, alias='triage_result')
-
+    isTriageResult: Optional[bool] = False
+    triageResult: Optional[TriageResult] = None
 
 class StatsData(ApiModel):
-    totalToday: int = Field(..., alias='total_today')
-    avgWaitTime: int = Field(..., alias='avg_wait_minutes')
-    criticalCount: int = Field(..., alias='critical_count')
-    activeDepartments: int = Field(..., alias='active_departments')
-    lastUpdated: Optional[str] = Field(default=None, alias='last_updated')
-
+    totalToday: int
+    avgWaitTime: int = Field(alias='avg_wait_minutes')
+    criticalCount: int
+    activeDepartments: int
+    doctorsOnDuty: int = 24
+    lastUpdated: Optional[str] = Field(alias='last_updated', default=None)
 
 class QueueAddRequest(ApiModel):
     name: Optional[str] = None
     age: Optional[int] = None
-    triageLevel: Optional[TriageLevel] = Field(default=None, alias='triage_level')
-    chiefComplaint: Optional[str] = Field(default=None, alias='chief_complaint')
+    triageLevel: Optional[TriageLevel] = None
+    chiefComplaint: Optional[str] = Field(alias='chief_complaint', default=None)
     department: Optional[str] = None
-    waitTime: Optional[int] = Field(default=None, alias='wait_time')
+    waitTime: Optional[int] = None
     status: Optional[PatientStatus] = None

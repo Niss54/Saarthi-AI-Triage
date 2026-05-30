@@ -1,50 +1,104 @@
-import random
-from typing import Dict
+from typing import Dict, Any
 
-from .models import TriageInput
+def rule_based_triage(payload: Dict[str, Any]) -> dict:
+    """Fallback rule-based triage logic when Gemini is disabled or fails"""
+    
+    complaint = str(payload.get('chief_complaint', '')).lower()
+    duration = str(payload.get('duration', '')).lower()
+    has_critical_symptoms = payload.get('has_fever_chest_breathing', False)
+    on_medication = payload.get('on_medication', False)
+    age = payload.get('age', 30)
+    gender = payload.get('gender', 'Other').lower()
+    is_pregnant = payload.get('is_pregnant', False)
 
+    # Danger keywords
+    danger_critical = ['chest pain', 'seene', 'saans', 'breathing', 'breathless', 'unconscious', 'behosh', 'laqwa', 'stroke', 'dil', 'heart', 'bleeding', 'khoon', 'seizure', 'dora']
+    danger_ortho = ['fracture', 'haddi', 'pair', 'tod', 'ghutna', 'joint']
+    danger_skin = ['rash', 'khujli', 'skin', 'chamdi', 'hair']
+    danger_eye = ['aankh', 'eye', 'nazar']
+    danger_ent = ['kaan', 'ear', 'gala', 'throat']
 
-def rule_based_triage(payload: TriageInput) -> Dict[str, object]:
-    complaint_lower = payload.chiefComplaint.lower()
-    danger_words = [
-        'chest pain', 'seene', 'dard', 'saans', 'breathing',
-        'breathless', 'unconscious', 'behosh'
-    ]
-    has_danger_words = any(word in complaint_lower for word in danger_words)
-
-    if payload.hasCriticalSymptoms and has_danger_words:
+    has_critical = any(w in complaint for w in danger_critical)
+    
+    if has_critical and has_critical_symptoms:
         return {
-            'triage_level': 'critical',
-            'department': 'Emergency',
-            'wait_time_minutes': 0,
-            'ai_reasoning': (
-                'Symptoms se chest pain aur breathing issue lag raha hai. '
-                'Emergency priority di gayi hai.'
-            ),
+            "severity": "critical",
+            "department": "Emergency",
+            "wait_time_minutes": 0,
+            "ai_reasoning": "Critical symptoms detected — seene mein dard aur saans ki takleef, turant emergency care zaroori.",
+            "urgency_reason": "Critical cardiac/respiratory symptoms",
+            "recommended_action": "Proceed to Emergency Bay immediately"
         }
-
-    if payload.duration == '1 mahine se zyada' or payload.onMedication:
-        department = 'Medicine'
-        if payload.gender.lower() == 'female' and payload.isPregnant:
-            department = 'Gynaecology'
-        wait_time = random.randint(15, 30)
+    elif has_critical:
         return {
-            'triage_level': 'moderate',
-            'department': department,
-            'wait_time_minutes': wait_time,
-            'ai_reasoning': (
-                'Long duration ya ongoing medication ka case hai. '
-                'Moderate priority di gayi hai.'
-            ),
+            "severity": "critical",
+            "department": "Emergency",
+            "wait_time_minutes": 0,
+            "ai_reasoning": "Critical symptoms detected. Immediate medical attention required.",
+            "urgency_reason": "Critical symptoms present",
+            "recommended_action": "Proceed to Emergency immediately"
         }
-
-    wait_time = random.randint(30, 60)
-    return {
-        'triage_level': 'mild',
-        'department': 'General OPD',
-        'wait_time_minutes': wait_time,
-        'ai_reasoning': (
-            'Symptoms mild lag rahe hain, urgent red flags nahi hain. '
-            'Normal queue follow karein.'
-        ),
-    }
+    elif any(w in complaint for w in danger_ortho):
+        return {
+            "severity": "moderate",
+            "department": "Orthopaedics",
+            "wait_time_minutes": 20,
+            "ai_reasoning": "Orthopaedic issue detected — haddi/joint related problem, specialist consultation needed.",
+            "urgency_reason": "Musculoskeletal issue",
+            "recommended_action": "Visit Orthopaedics OPD"
+        }
+    elif any(w in complaint for w in danger_skin):
+        return {
+            "severity": "mild",
+            "department": "Dermatology",
+            "wait_time_minutes": 40,
+            "ai_reasoning": "Skin related issue — routine dermatology consultation.",
+            "urgency_reason": "Dermatological condition",
+            "recommended_action": "Visit Dermatology OPD"
+        }
+    elif any(w in complaint for w in danger_eye):
+        return {
+            "severity": "mild",
+            "department": "Eye OPD",
+            "wait_time_minutes": 40,
+            "ai_reasoning": "Eye related issue — ophthalmology check required.",
+            "urgency_reason": "Ophthalmological condition",
+            "recommended_action": "Visit Eye OPD"
+        }
+    elif any(w in complaint for w in danger_ent):
+        return {
+            "severity": "mild",
+            "department": "ENT",
+            "wait_time_minutes": 40,
+            "ai_reasoning": "ENT related issue — specialist consultation.",
+            "urgency_reason": "ENT condition",
+            "recommended_action": "Visit ENT OPD"
+        }
+    elif age < 12:
+        return {
+            "severity": "moderate",
+            "department": "Paediatrics",
+            "wait_time_minutes": 15,
+            "ai_reasoning": "Bacche ki umar 12 se kam hai — Paediatrics mein dikhana zaroori.",
+            "urgency_reason": "Pediatric patient",
+            "recommended_action": "Visit Paediatrics OPD"
+        }
+    elif duration == '1 mahine se zyada' or on_medication:
+        dept = "Gynaecology" if gender == "female" and is_pregnant else "Medicine"
+        return {
+            "severity": "moderate",
+            "department": dept,
+            "wait_time_minutes": 25,
+            "ai_reasoning": "Chronic condition ya medication — moderate priority consultation.",
+            "urgency_reason": "Chronic/ongoing condition",
+            "recommended_action": f"Visit {dept} OPD"
+        }
+    else:
+        return {
+            "severity": "mild",
+            "department": "General OPD",
+            "wait_time_minutes": 45,
+            "ai_reasoning": "Routine OPD consultation — mild symptoms.",
+            "urgency_reason": "Routine consultation",
+            "recommended_action": "Visit General OPD"
+        }

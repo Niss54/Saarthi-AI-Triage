@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Printer } from 'lucide-react';
+import { Send, Printer, User, Building2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChatMessage, TriageResult } from '../types';
+import type { ChatMessage, TriageResult } from '../types';
 import { triagePatient } from '../api/client';
+import EmergencyAlertPanel from '../components/EmergencyAlertPanel';
 
 const BOT_QUESTIONS = [
   'Namaste! Main Saarthi hoon. Aapka KGMU OPD mein swagat hai. 🙏 Kripya apna naam batayein.',
@@ -23,7 +24,163 @@ export default function PatientPortal() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [triageComplete, setTriageComplete] = useState(false);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [emergencyResult, setEmergencyResult] = useState<TriageResult | null>(null);
+  const [lang, setLang] = useState<'hi-IN' | 'en-US'>('hi-IN');
+  const [isListening, setIsListening] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const speakText = (text: string) => {
+    if (!ttsEnabled || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Browser does not support Speech Recognition. Please try Chrome.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = lang;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      // Optional: auto-send after a tiny delay to ensure input is updated, but user asked to auto-send
+      setTimeout(() => handleSend(transcript), 300);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  };
+
+  const playEmergencyBeep = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playBeep = () => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.1);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      };
+      playBeep();
+      let count = 1;
+      const interval = setInterval(() => {
+        if (count >= 3) {
+          clearInterval(interval);
+          return;
+        }
+        playBeep();
+        count++;
+      }, 600);
+    } catch(e) {
+      console.log('Audio error:', e);
+    }
+  };
+
+  const handleDemoFill = async (caseType: 'critical' | 'moderate') => {
+    let demoAnswers: string[] = [];
+    if (caseType === 'critical') {
+      demoAnswers = ['Ramesh', '55', 'Male', 'Seene mein bahut dard hai aur saans lene mein takleef ho rahi hai', '2 hours', 'Haan', 'Nahi'];
+      // set messages to show the conversation
+      setMessages([
+        { id: '1', text: BOT_QUESTIONS[0], sender: 'bot', timestamp: '' },
+        { id: '2', text: demoAnswers[0], sender: 'user', timestamp: '' },
+        { id: '3', text: BOT_QUESTIONS[1], sender: 'bot', timestamp: '' },
+        { id: '4', text: demoAnswers[1], sender: 'user', timestamp: '' },
+        { id: '5', text: BOT_QUESTIONS[2], sender: 'bot', timestamp: '' },
+        { id: '6', text: demoAnswers[2], sender: 'user', timestamp: '' },
+        { id: '7', text: BOT_QUESTIONS[3], sender: 'bot', timestamp: '' },
+        { id: '8', text: demoAnswers[3], sender: 'user', timestamp: '' },
+        { id: '9', text: BOT_QUESTIONS[4], sender: 'bot', timestamp: '' },
+        { id: '10', text: demoAnswers[4], sender: 'user', timestamp: '' },
+        { id: '11', text: BOT_QUESTIONS[5], sender: 'bot', timestamp: '' },
+        { id: '12', text: demoAnswers[5], sender: 'user', timestamp: '' },
+        { id: '13', text: BOT_QUESTIONS[6], sender: 'bot', timestamp: '' },
+        { id: '14', text: demoAnswers[6], sender: 'user', timestamp: '' }
+      ]);
+    } else {
+      demoAnswers = ['Sunita', '32', 'Female', 'Bukhar hai aur pet mein dard hai', '3 din', 'Haan', 'Nahi', 'Nahi'];
+      setMessages([
+        { id: '1', text: BOT_QUESTIONS[0], sender: 'bot', timestamp: '' },
+        { id: '2', text: demoAnswers[0], sender: 'user', timestamp: '' },
+        { id: '3', text: BOT_QUESTIONS[1], sender: 'bot', timestamp: '' },
+        { id: '4', text: demoAnswers[1], sender: 'user', timestamp: '' },
+        { id: '5', text: BOT_QUESTIONS[2], sender: 'bot', timestamp: '' },
+        { id: '6', text: demoAnswers[2], sender: 'user', timestamp: '' },
+        { id: '7', text: BOT_QUESTIONS[3], sender: 'bot', timestamp: '' },
+        { id: '8', text: demoAnswers[3], sender: 'user', timestamp: '' },
+        { id: '9', text: BOT_QUESTIONS[4], sender: 'bot', timestamp: '' },
+        { id: '10', text: demoAnswers[4], sender: 'user', timestamp: '' },
+        { id: '11', text: BOT_QUESTIONS[5], sender: 'bot', timestamp: '' },
+        { id: '12', text: demoAnswers[5], sender: 'user', timestamp: '' },
+        { id: '13', text: BOT_QUESTIONS[6], sender: 'bot', timestamp: '' },
+        { id: '14', text: demoAnswers[6], sender: 'user', timestamp: '' },
+        { id: '15', text: PREGNANCY_QUESTION, sender: 'bot', timestamp: '' },
+        { id: '16', text: demoAnswers[7], sender: 'user', timestamp: '' }
+      ]);
+    }
+    
+    setAnswers(demoAnswers);
+    setInput('');
+    setCurrentStep(demoAnswers.length);
+    setIsLoading(true);
+    addBotMessage('Generating your triage report... 🏥');
+    
+    try {
+      const isFemale = demoAnswers[2]?.toLowerCase() === 'female';
+      const hasCriticalSymptoms = demoAnswers[5]?.toLowerCase().includes('haan') || demoAnswers[5]?.toLowerCase() === 'yes';
+      const onMedication = demoAnswers[6]?.toLowerCase().includes('haan') || demoAnswers[6]?.toLowerCase() === 'yes';
+      const isPregnant = isFemale && demoAnswers[7] ? (demoAnswers[7].toLowerCase().includes('haan') || demoAnswers[7].toLowerCase() === 'yes') : undefined;
+
+      const result = await triagePatient({
+        name: demoAnswers[0],
+        age: parseInt(demoAnswers[1]) || 30,
+        gender: demoAnswers[2],
+        chiefComplaint: demoAnswers[3],
+        duration: demoAnswers[4],
+        hasCriticalSymptoms,
+        onMedication,
+        isPregnant,
+      });
+
+      if (result.isEmergency || result.triageLevel === 'critical') {
+        setEmergencyResult(result);
+        setShowEmergency(true);
+        playEmergencyBeep();
+      } else {
+        addTriageResultMessage(result);
+      }
+      setTriageComplete(true);
+    } catch (err) {
+      addBotMessage('Sorry, kuch technical issue ho gaya. Kripya dubara try karein. 🙏');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,6 +206,7 @@ export default function PatientPortal() {
       timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
     };
     setMessages(prev => [...prev, msg]);
+    speakText(text);
   };
 
   const addUserMessage = (text: string) => {
@@ -92,11 +250,12 @@ export default function PatientPortal() {
     return null;
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading || triageComplete) return;
+  const handleSend = async (overrideInput?: string) => {
+    const textToSend = typeof overrideInput === 'string' ? overrideInput : input;
+    if (!textToSend.trim() || isLoading || triageComplete) return;
 
-    const userText = input.trim();
-    setInput('');
+    const userText = textToSend.trim();
+    if (!overrideInput) setInput('');
     addUserMessage(userText);
 
     const newAnswers = [...answers, userText];
@@ -131,7 +290,13 @@ export default function PatientPortal() {
           isPregnant,
         });
 
-        addTriageResultMessage(result);
+        if (result.isEmergency || result.triageLevel === 'critical') {
+          setEmergencyResult(result);
+          setShowEmergency(true);
+          playEmergencyBeep();
+        } else {
+          addTriageResultMessage(result);
+        }
         setTriageComplete(true);
       } catch (err) {
         addBotMessage('Sorry, kuch technical issue ho gaya. Kripya dubara try karein. 🙏');
@@ -160,12 +325,30 @@ export default function PatientPortal() {
 
   return (
     <div className="wa-container">
+      {showEmergency && emergencyResult && (
+        <EmergencyAlertPanel result={emergencyResult} />
+      )}
       {/* WhatsApp-style header */}
       <div className="wa-header">
         <div className="avatar">S</div>
-        <div className="info">
+        <div className="info" style={{ flex: 1 }}>
           <h3>Saarthi AI 🏥</h3>
           <p>KGMU OPD Triage Bot • Online</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            onClick={() => setLang(l => l === 'hi-IN' ? 'en-US' : 'hi-IN')}
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+          >
+            {lang === 'hi-IN' ? 'हिंदी' : 'English'}
+          </button>
+          <button 
+            onClick={() => setTtsEnabled(!ttsEnabled)}
+            style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer' }}
+            title={ttsEnabled ? "Mute Voice" : "Enable Voice"}
+          >
+            {ttsEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+          </button>
         </div>
       </div>
 
@@ -187,8 +370,16 @@ export default function PatientPortal() {
                   <span style={{ fontWeight: 600 }}>{msg.triageResult.department}</span>
                 </div>
                 <div className="detail-row">
+                  <span className="label"><User size={14} style={{display:'inline'}}/> Assigned Doctor</span>
+                  <span style={{ fontWeight: 600 }}>{msg.triageResult.assignedDoctor || 'On-Duty Physician'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="label"><Building2 size={14} style={{display:'inline'}}/> Room</span>
+                  <span style={{ fontWeight: 600 }}>{msg.triageResult.roomNumber || 'General'}</span>
+                </div>
+                <div className="detail-row">
                   <span className="label">Wait Time</span>
-                  <span style={{ fontWeight: 600 }}>{msg.triageResult.waitTimeMinutes} min</span>
+                  <span style={{ fontWeight: 600 }}>~{msg.triageResult.waitTimeMinutes} min</span>
                 </div>
                 <div className="detail-row">
                   <span className="label">Queue Position</span>
@@ -227,17 +418,51 @@ export default function PatientPortal() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Demo Buttons */}
+      <div className="no-print" style={{ display: 'flex', gap: '8px', padding: '0 16px', marginBottom: '8px', justifyContent: 'center' }}>
+        <button 
+          onClick={() => handleDemoFill('critical')}
+          disabled={isLoading || triageComplete}
+          style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#fca5a5', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer' }}
+        >
+          Demo: Heart Attack (Critical)
+        </button>
+        <button 
+          onClick={() => handleDemoFill('moderate')}
+          disabled={isLoading || triageComplete}
+          style={{ background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fde68a', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', cursor: 'pointer' }}
+        >
+          Demo: Fever (Moderate)
+        </button>
+      </div>
+
       {/* Input area */}
-      <div className="wa-input-area no-print">
+      <div className="wa-input-area no-print" style={{ position: 'relative' }}>
+        <button 
+          onClick={toggleListening} 
+          disabled={isLoading || triageComplete}
+          style={{ 
+            background: 'transparent', 
+            border: 'none', 
+            color: isListening ? '#ef4444' : '#94a3b8',
+            cursor: 'pointer',
+            padding: '8px',
+            animation: isListening ? 'pulse-dot 1.5s infinite' : 'none'
+          }}
+          title="Click mic and speak your symptoms"
+        >
+          {isListening ? <Mic size={22} /> : <MicOff size={22} />}
+        </button>
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={triageComplete ? 'Triage complete ✓' : 'Type your answer...'}
-          disabled={isLoading || triageComplete}
+          placeholder={isListening ? 'Listening...' : (triageComplete ? 'Triage complete ✓' : 'Type your answer...')}
+          disabled={isLoading || triageComplete || isListening}
+          style={{ flex: 1 }}
         />
-        <button onClick={handleSend} disabled={!input.trim() || isLoading || triageComplete}>
+        <button onClick={() => handleSend()} disabled={!input.trim() || isLoading || triageComplete}>
           <Send size={18} />
         </button>
       </div>

@@ -1,4 +1,4 @@
-import { TriageResult } from '../types';
+import type { TriageResult } from '../types';
 
 interface TriageInput {
   name: string;

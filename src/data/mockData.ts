@@ -1,4 +1,4 @@
-import { QueueItem, Department, Insight, ActivityFeedItem, StatsData } from '../types';
+import type { QueueItem, Department, Insight, ActivityFeedItem, StatsData } from '../types';
 
 export const DEPARTMENTS = [
   'Emergency', 'Medicine', 'Orthopaedics', 'Gynaecology',

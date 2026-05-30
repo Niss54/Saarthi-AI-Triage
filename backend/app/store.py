@@ -22,6 +22,7 @@ from .models import (
     TriageInput,
     TriageResponse,
 )
+from .triage_engine import assign_doctor
 
 STATUS_FLOW = ['waiting', 'called', 'in-consultation', 'done']
 
@@ -55,8 +56,9 @@ class InMemoryStore:
     def _now_timestamp(self) -> str:
         return datetime.now().isoformat(timespec='seconds')
 
-    def _generate_token(self) -> str:
-        return f'APL-{random.randint(1000, 9999)}'
+    def _generate_token(self, is_emergency: bool = False) -> str:
+        prefix = 'EMG' if is_emergency else 'OPD'
+        return f'{prefix}-{random.randint(1000, 9999)}'
 
     def seed_queue(self) -> None:
         with self.lock:
@@ -206,11 +208,14 @@ class InMemoryStore:
         triage_level = triage_level if triage_level in {'critical', 'moderate', 'mild'} else 'mild'
         department = department or self._pick_department(triage_level)
         wait_time = wait_time if wait_time is not None else self._pick_wait_time(triage_level)
-        status = status or 'waiting'
+        status = status or ('called' if triage_level == 'critical' else 'waiting')
+        is_emergency = (triage_level == 'critical')
+        
+        doctor_info = assign_doctor('Emergency' if is_emergency else department)
 
         return QueueItem(
             id=str(uuid.uuid4()),
-            token=self._generate_token(),
+            token=self._generate_token(is_emergency),
             name=name,
             age=age,
             triageLevel=triage_level,
@@ -219,6 +224,9 @@ class InMemoryStore:
             waitTime=wait_time,
             status=status,
             timestamp=self._now_time(),
+            assignedDoctor=doctor_info["name"],
+            roomNumber=doctor_info["room"],
+            isEmergency=is_emergency,
         )
 
     def add_patient(self, payload: Optional[QueueAddRequest]) -> QueueItem:
@@ -257,16 +265,26 @@ class InMemoryStore:
 
     def triage_patient(self, payload: TriageInput, triage_data: Dict[str, object]) -> TriageResponse:
         with self.lock:
-            triage_level = str(triage_data.get('triage_level', 'mild'))
+            triage_level = str(triage_data.get('triageLevel', triage_data.get('triage_level', 'mild')))
             department = str(triage_data.get('department', 'General OPD'))
-            wait_time = int(triage_data.get('wait_time_minutes', 30))
-            ai_reasoning = triage_data.get('ai_reasoning')
+            wait_time = int(triage_data.get('waitTimeMinutes', triage_data.get('wait_time_minutes', 30)))
+            ai_reasoning = str(triage_data.get('aiReasoning', triage_data.get('ai_reasoning', '')))
+            urgency_reason = str(triage_data.get('urgencyReason', triage_data.get('urgency_reason', '')))
+            recommended_action = str(triage_data.get('recommendedAction', triage_data.get('recommended_action', '')))
+
+            is_emergency = (triage_level == 'critical')
+            doctor_info = assign_doctor('Emergency' if is_emergency else department)
 
             self.queue_position_counter += 1
-            queue_position = 1 if triage_level == 'critical' else self.queue_position_counter
+            queue_position = 1 if is_emergency else self.queue_position_counter
 
-            token = self._generate_token()
+            token = self._generate_token(is_emergency)
             timestamp = self._now_time()
+            
+            if is_emergency:
+                msg = f"🚨 EMERGENCY: Turant {doctor_info['room']} mein jaayein. {doctor_info['name']} aapka intezaar kar rahe hain. Staff ko notify kar diya gaya hai."
+            else:
+                msg = f"Kripya Token le lein aur {department} — Room {doctor_info['room']} par jaayein. {doctor_info['name']} se milein. Wait time: ~{wait_time} mins."
 
             queue_item = QueueItem(
                 id=str(uuid.uuid4()),
@@ -277,12 +295,21 @@ class InMemoryStore:
                 chiefComplaint=payload.chiefComplaint,
                 department=department,
                 waitTime=wait_time,
-                status='waiting',
+                status='called' if is_emergency else 'waiting',
                 timestamp=timestamp,
+                assignedDoctor=doctor_info["name"],
+                roomNumber=doctor_info["room"],
+                isEmergency=is_emergency,
             )
 
-            self.arrival_counter += 1
-            self.queue_records.append(QueueRecord(queue_item, self.arrival_counter))
+            # Insert critical at the front
+            if is_emergency:
+                self.arrival_counter -= 1000 # Make sure it's placed at the top by artifically lowering arrival order
+                self.queue_records.append(QueueRecord(queue_item, self.arrival_counter))
+            else:
+                self.arrival_counter += 1
+                self.queue_records.append(QueueRecord(queue_item, self.arrival_counter))
+                
             self.total_today += 1
             self._add_feed_item(queue_item)
             self._recalculate_departments()
@@ -296,6 +323,12 @@ class InMemoryStore:
                 queuePosition=queue_position,
                 aiReasoning=ai_reasoning,
                 timestamp=timestamp,
+                message=msg,
+                assignedDoctor=doctor_info["name"],
+                roomNumber=doctor_info["room"],
+                isEmergency=is_emergency,
+                urgencyReason=urgency_reason,
+                recommendedAction=recommended_action,
             )
 
     def advance_random_statuses(self) -> int:

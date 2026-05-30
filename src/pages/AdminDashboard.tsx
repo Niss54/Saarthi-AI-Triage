@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Stethoscope, UserPlus, Activity, Clock, AlertTriangle, Users, BarChart3, WifiOff } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import toast from 'react-hot-toast';
-import { QueueItem, Department, Insight, ActivityFeedItem, StatsData } from '../types';
+import type { QueueItem, Department, Insight, ActivityFeedItem, StatsData } from '../types';
 import { getQueue, addSimulatedPatient, getDepartments, getStats, getInsights, getFeed } from '../api/client';
 
 function AnimatedCounter({ target, duration = 2000, suffix = '' }: { target: number; duration?: number; suffix?: string }) {
@@ -136,9 +136,9 @@ export default function AdminDashboard() {
         <div className="title-section">
           <h1>
             <Stethoscope size={28} color="#00d4aa" />
-            Saarthi AI
+            King George's Medical University, Lucknow
           </h1>
-          <p>KGMU Smart OPD Management System — Powered by Google Gemini</p>
+          <p>Saarthi AI — Smart OPD Triage & Management | Est. 1905 | OPD Hours: 8:00 AM – 2:00 PM</p>
         </div>
         <div className="status-section">
           <div className="live-clock">{clockStr}</div>
@@ -169,6 +169,11 @@ export default function AdminDashboard() {
           <Activity size={24} color="#22c55e" />
           <div className="stat-number"><AnimatedCounter target={stats.activeDepartments} /></div>
           <div className="stat-label">Departments Active</div>
+        </div>
+        <div className="stat-card" style={{ animationDelay: '0.4s' }}>
+          <UserPlus size={24} color="#3b82f6" />
+          <div className="stat-number"><AnimatedCounter target={stats.doctorsOnDuty || 24} /></div>
+          <div className="stat-label">Doctors On Duty</div>
         </div>
       </div>
 
@@ -293,6 +298,31 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="glass-card" style={{ marginBottom: 24, marginTop: 24 }}>
+        <h2 className="section-title" style={{ marginBottom: 16 }}>
+          <Activity size={20} color="#00d4aa" />
+          Agentic Workflow Architecture
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          <div style={{ background: 'rgba(0, 212, 170, 0.05)', border: '1px solid rgba(0, 212, 170, 0.2)', borderRadius: 8, padding: 16 }}>
+            <h4 style={{ color: '#00d4aa', marginBottom: 8 }}>🎙️ Voice Agent</h4>
+            <p style={{ fontSize: 13, color: '#94a3b8' }}>Multilingual speech recognition & TTS for seamless patient intake (hi-IN / en-US).</p>
+          </div>
+          <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 8, padding: 16 }}>
+            <h4 style={{ color: '#ef4444', marginBottom: 8 }}>🧠 Triage Agent</h4>
+            <p style={{ fontSize: 13, color: '#94a3b8' }}>Gemini 1.5 Flash powered severity classification and emergency detection.</p>
+          </div>
+          <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 8, padding: 16 }}>
+            <h4 style={{ color: '#3b82f6', marginBottom: 8 }}>👨‍⚕️ Assignment Agent</h4>
+            <p style={{ fontSize: 13, color: '#94a3b8' }}>Maps critical patients to specialized departments and assigns on-duty doctors.</p>
+          </div>
+          <div style={{ background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 8, padding: 16 }}>
+            <h4 style={{ color: '#f59e0b', marginBottom: 8 }}>📊 Insights Agent</h4>
+            <p style={{ fontSize: 13, color: '#94a3b8' }}>Monitors live queue data and generates actionable hospital management insights.</p>
           </div>
         </div>
       </div>

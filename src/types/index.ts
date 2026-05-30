@@ -23,6 +23,11 @@ export interface TriageResult {
   queuePosition: number;
   message: string;
   aiReasoning?: string;
+  assignedDoctor?: string;
+  roomNumber?: string;
+  isEmergency?: boolean;
+  urgencyReason?: string;
+  recommendedAction?: string;
 }
 
 export interface QueueItem {
@@ -36,6 +41,9 @@ export interface QueueItem {
   waitTime: number;
   status: PatientStatus;
   timestamp: string;
+  assignedDoctor?: string;
+  roomNumber?: string;
+  isEmergency?: boolean;
 }
 
 export interface Department {

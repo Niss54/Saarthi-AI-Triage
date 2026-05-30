@@ -797,3 +797,133 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Emergency Alert Overlay */
+.emergency-alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(10, 22, 40, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.emergency-alert-content {
+  background: linear-gradient(135deg, #450a0a, #7f1d1d);
+  border: 2px solid #ef4444;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  padding: 32px;
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.4);
+  color: white;
+}
+
+.pulse-red-border {
+  animation: pulse-red-border 2s infinite;
+}
+
+@keyframes pulse-red-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+}
+
+.alert-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.alert-icon {
+  color: #ef4444;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.alert-header h2 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  color: #fca5a5;
+}
+
+.alert-header p {
+  font-size: 18px;
+  color: #fecaca;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 600;
+}
+
+.alert-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.5), transparent);
+  margin: 24px 0;
+}
+
+.alert-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item .label {
+  font-size: 13px;
+  color: #fca5a5;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-item .value {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.detail-item .value.critical {
+  color: #ef4444;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.detail-item .value.highlight {
+  color: #fef08a;
+}
+
+.token-text {
+  font-size: 24px;
+  letter-spacing: 2px;
+}
+
+.alert-footer {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.action-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.sub-text {
+  color: #fca5a5;
+  font-size: 16px;
+}
+
