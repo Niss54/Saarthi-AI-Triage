@@ -33,6 +33,9 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Cloned reference repos
+Healthcare-AI-Voice-agent/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
