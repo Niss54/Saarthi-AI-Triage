@@ -1,99 +1,192 @@
-# Saarthi AI — Healthcare AI Triage Agent 🏥
+[
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+]()
+[
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+]()
+[
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+]()
+[
+![Google Gemini](https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)
+]()
+[
+![LiveKit](https://img.shields.io/badge/LiveKit-FF6B35?style=for-the-badge&logo=webrtc&logoColor=white)
+]()
+[
+![Sarvam AI](https://img.shields.io/badge/Sarvam_AI-FF4B4B?style=for-the-badge&logo=ai&logoColor=white)
+]()
+[
+![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
+]()
+[
+![APL 2025](https://img.shields.io/badge/APL_2025-Healthcare_Track-green?style=for-the-badge)
+]()
 
-**Project Name**: Saarthi AI  
-**Team**: Syntrix  
-**Hackathon**: APL Hackathon 2025  
-**Theme**: Healthcare AI Triage — KGMU Lucknow (PS-01)  
+# 🏥 Saarthi AI
+## Intelligent OPD Triage & Queue Management for KGMU Lucknow
+### AI-Powered Patient Triage Agent | Team Syntrix | APL 2025
 
-Saarthi AI is an intelligent, agentic OPD Triage system built specifically for KGMU (King George's Medical University) Lucknow. It uses a multi-agent architecture powered by Google Gemini 1.5 Flash to automatically triage patients, assign departments, allocate specific on-duty doctors, and manage an intelligent priority queue.
+> "5,000 patients walk into KGMU every day. 
+>  Saarthi AI ensures the most critical ones 
+>  are never lost in the queue."
 
----
+## 1. Problem Statement
+- KGMU handles 5000+ OPD patients daily
+- No intelligent prioritization system
+- Critical cardiac patients wait with minor cases
+- Manual triage = slow, error-prone, life-threatening
+- Lucknow Civil Hospital faces same challenge
 
-## 🎯 Key Features & WOW Moments
+## 2. Solution Overview
+- Saarthi AI: WhatsApp-style pre-triage chatbot
+- Gemini AI classifies symptoms in real-time
+- Critical cases → Emergency in 0-3 minutes
+- Real-time admin dashboard for hospital staff
+- Voice triage in Hindi + 8 Indian languages
+- Prescription OCR — upload photo, get triaged
 
-### 1. Agentic Workflow Architecture
-Our solution implements 4 specialized AI agents working together seamlessly:
-- **🎙️ Voice Agent**: Multilingual speech recognition & text-to-speech for seamless patient intake (supports Hindi & English).
-- **🧠 Triage Agent**: Gemini-powered classification engine that detects symptom severity and extracts medical data.
-- **👨‍⚕️ Assignment Agent**: Maps critical patients to specialized departments, assigns on-duty doctors, and allocates rooms.
-- **📊 Insights Agent**: Continuously monitors live queue data and generates actionable hospital management insights.
+## 3. Demo Video
+[📹 Watch Demo](YOUR_LINK_HERE)
 
-### 2. Emergency Critical WOW Moment
-- The system proactively detects life-threatening conditions (e.g., chest pain, breathing issues).
-- Automatically triggers a **Priority Escalation Protocol** with a full-screen red emergency alert and audio beep.
-- Issues specialized `EMG-XXXX` tokens, pushing the patient to the very front of the hospital queue automatically.
+## 4. Key Features
+- 🚨 **Emergency Escalation** — Critical cases bypass queue instantly
+- 🤖 **Gemini AI Triage** — Symptom analysis in seconds  
+- 🎙️ **Hindi Voice Agent** — Speak symptoms, get routed
+- 📋 **Prescription OCR** — Upload prescription photo for auto-triage
+- 📊 **Live Admin Dashboard** — Real-time queue war room
+- ⚡ **WebSocket Updates** — Queue changes appear instantly
+- 🖨️ **Token Slip** — Printable OPD token with doctor + room
+- 🏥 **KGMU Specific** — 8 departments, 24 doctors, real room numbers
 
-### 3. KGMU-Specific Realism
-- Customized hospital dashboard showing KGMU branding.
-- Real-time simulation of doctors on duty, active departments, and live wait times.
-- Department load monitoring with Recharts and Reusable Activity Feeds.
-
-### 4. Multilingual Voice Assistant
-- Integrated Web Speech API for voice recognition (`hi-IN` and `en-US`).
-- Text-To-Speech (TTS) engine reads out bot questions aloud for elderly/disabled patients.
-
----
-
-## 🛠️ Technology Stack
-
-- **Frontend**: React 19, Vite, TypeScript, Tailwind CSS, Lucide React, Recharts.
-- **Backend**: Python, FastAPI, WebSockets, Uvicorn, Pydantic.
-- **AI Engine**: Google Gemini 1.5 Flash API.
-- **Real-time Sync**: WebSockets (`/ws/queue`) for instant dashboard updates.
-
----
-
-## 🏗️ System Design & Architecture
+## 5. Agent Workflow
+**5 AI Agents Working Together**
 
 ```mermaid
-graph TD
-    A[Patient (Patient Portal)] <-->|Voice/Text| B(Voice Agent)
-    B -->|Symptoms & Vitals| C(FastAPI Backend)
-    C <-->|Prompt & JSON Response| D{Gemini 1.5 Flash Triage Agent}
-    D -->|Classification| E(Assignment Agent)
-    E -->|Route to Dept & Doctor| F[(In-Memory Queue Store)]
-    F <-->|WebSocket Broadcast| G[Admin Dashboard]
-    F <-->|Queue Snapshot| H{Insights Agent}
-    H -->|Actionable Tips| G
+graph LR
+    A[🧑 Patient Input\nText / Voice / Image] --> B[📥 Intake Agent\nSymptom Collection]
+    B --> C[🔍 Risk Triage Agent\nGemini AI Analysis]
+    C --> D{Severity?}
+    D -->|Critical| E[🚨 Emergency Agent\nPriority Override\nEMG Token]
+    D -->|Moderate/Low| F[🏥 Department Router\nAssign Dept + Doctor]
+    E --> G[📋 Handoff Agent\nToken + Room + ETA]
+    F --> G
+    G --> H[📊 Dashboard Update\nWebSocket Broadcast]
 ```
 
-### Data Flow
-1. **Intake**: Patient interacts with the WhatsApp-style UI (via text or voice).
-2. **Analysis**: Patient data is sent to the backend `/api/triage`.
-3. **Inference**: The Gemini Triage Agent evaluates the chief complaint alongside vitals to classify as `Critical`, `Moderate`, or `Mild`.
-4. **Assignment**: Based on the department, the Assignment Agent looks up a doctor pool and allocates a specific doctor and room.
-5. **Queueing**: If Critical, an `EMG` token is generated and pushed to the front. Otherwise, standard FIFO mapping applies.
-6. **Broadcasting**: The `InMemoryStore` singleton broadcasts the new queue state via WebSockets to all connected clients.
-7. **Insights**: The Admin Dashboard periodically queries the Insights Agent, which analyzes the queue to recommend hospital operations strategies.
+## 6. System Architecture
 
----
+```mermaid
+graph TB
+    subgraph Frontend ["🖥️ Frontend — React + Vite + TypeScript"]
+        A[WhatsApp Chat UI] 
+        B[Voice Agent — Web Speech API]
+        C[Prescription OCR Upload]
+        D[Admin Dashboard]
+        E[Live Queue Board]
+    end
+    
+    subgraph Backend ["⚙️ Backend — FastAPI + Python"]
+        F[Triage Engine]
+        G[Doctor Assignment]
+        H[OCR Endpoint]
+        I[WebSocket Server]
+        J[Queue Manager]
+    end
+    
+    subgraph AI ["🤖 AI Layer"]
+        K[Google Gemini 1.5 Flash\nTriage + OCR + Insights]
+        L[Sarvam AI\nHindi STT + TTS]
+        M[LiveKit\nReal-time Voice]
+    end
+    
+    A --> F
+    B --> L
+    L --> F
+    C --> H
+    H --> K
+    F --> K
+    K --> G
+    G --> J
+    J --> I
+    I --> D
+    I --> E
+```
 
-## 🚀 Running the Project
+## 7. Tech Stack
+| Component | Technology |
+|---|---|
+| Frontend | React, TypeScript, Vite, Tailwind CSS |
+| Backend | FastAPI, Python, WebSockets |
+| Primary AI | Google Gemini 1.5 Flash |
+| Voice STT/TTS | Sarvam AI (bulbul:v1, saaras:v1) |
+| Voice Infrastructure | LiveKit WebRTC |
+| Charts | Recharts |
+| Real-time | WebSockets |
+| OCR | Gemini Vision API |
 
-### Prerequisites
-- Node.js (v18+)
-- Python (3.10+)
-- Gemini API Key
+## 8. Setup & Run
 
-### Backend Setup
-1. `cd backend`
-2. Create virtual environment: `python -m venv venv`
-3. Activate venv: `.\venv\Scripts\activate` (Windows)
-4. Install dependencies: `pip install -r requirements.txt`
-5. Create `.env` file and add your key: `GEMINI_API_KEY=your_key_here`
-6. Run server: `uvicorn app.main:app --reload --port 8000`
+### Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+pip install -r requirements.txt
+# Set environment variables in .env (GEMINI_API_KEY, SARVAM_API_KEY, LIVEKIT_*)
+uvicorn main:app --reload --port 8000
+```
 
-### Frontend Setup
-1. Run `npm install` in the root directory.
-2. Run `npm run dev`.
-3. Open `http://localhost:5173/patient` for the Patient Portal.
-4. Open `http://localhost:5173/admin` for the Admin Dashboard.
+### Frontend
+```bash
+npm install
+npm run dev
+```
 
----
+### Voice Agent Setup
+Ensure backend is running (provides LiveKit token and Sarvam STT/TTS).
+Go to `http://localhost:5173/voice-agent` to test the voice capabilities.
 
-## 🧪 Demo Instructions
-In the Patient Portal, you will see two **Demo Quick-Fill Buttons** below the chat screen:
-1. **Heart Attack (Critical)**: Simulates a 55-year old male with chest pain. Triggers the Emergency Protocol.
-2. **Fever (Moderate)**: Simulates a standard OPD fever case assigned to General Medicine.
+## 9. API Reference
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/triage` | POST | Gemini triage |
+| `/api/ocr-triage` | POST | Prescription image triage |
+| `/api/queue` | GET | All patients |
+| `/api/queue/add` | POST | Add patient |
+| `/api/departments` | GET | Department list |
+| `/api/stats` | GET | Hospital stats |
+| `/api/insights` | GET | AI insights |
+| `/api/livekit/token` | GET | Voice room token |
+| `/ws/queue` | WS | Real-time updates |
 
-Pressing these buttons instantly loads a complete conversation history and performs triage for a smooth presentation.
+## 10. Demo Scenarios
+
+**🚨 Critical:**
+- **Input:** "Mere seene mein tej dard hai"
+- **Output:** EMG token, Emergency Bay, 0-3 min
+
+**⚠️ Moderate:**
+- **Input:** "5 din se bukhar hai"
+- **Output:** OPD token, General Medicine, ~28 min
+
+**📋 OCR:**
+- **Input:** Prescription photo upload
+- **Output:** Auto-extracted symptoms, triage result
+
+## 11. Impact
+- Automated critical case detection with priority escalation
+- Significant reduction in triage time for time-sensitive cases
+- Designed to scale with KGMU infrastructure
+- Multilingual support for UP patient population
+
+## 12. Roadmap
+- [ ] Real WhatsApp Business API Integration
+- [ ] EHR / Hospital Management System Integration
+- [ ] ML-based wait time prediction from historical data
+- [ ] Automated SMS/WhatsApp notifications
+- [ ] Expansion to Lucknow Civil Hospital
+- [ ] Offline mode for low-connectivity areas
+
+## 13. Team
+**Team Syntrix | APL 2025 | Google Developer Groups Lucknow**

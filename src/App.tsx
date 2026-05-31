@@ -5,6 +5,12 @@ import { Toaster } from 'react-hot-toast';
 import AdminDashboard from './pages/AdminDashboard';
 import PatientPortal from './pages/PatientPortal';
 import About from './pages/About';
+import HomePage from './pages/HomePage';
+import LiveQueue from './pages/LiveQueue';
+import AIInsights from './pages/AIInsights';
+import VoiceAgent from './pages/VoiceAgent';
+import Footer from './components/Footer';
+import SoftAurora from './components/SoftAurora';
 import './index.css';
 
 function App() {
@@ -12,9 +18,26 @@ function App() {
 
   return (
     <Router>
-      <div className="spline-bg" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1, opacity: 0.4, pointerEvents: 'none' }}>
-        <iframe src='https://my.spline.design/bganimation-SneN1YGDvvZ5jtSspTMwtlbU/' frameBorder='0' width='100%' height='100%' style={{ transform: 'scale(0.23)' }}></iframe>
+      {/* Soft Aurora Background */}
+      <div className="aurora-bg-wrapper">
+        <SoftAurora
+          speed={0.7}
+          scale={1.5}
+          brightness={1.0}
+          color1="#000000" /* Deep dark background */
+          color2="#00e5a0" /* Bright teal aurora */
+          noiseFrequency={2.0}
+          noiseAmplitude={1.0}
+          bandHeight={0.6}
+          bandSpread={1.2}
+          octaveDecay={0.15}
+          layerOffset={0.2}
+          colorSpeed={1.0}
+          enableMouseInteraction
+          mouseInfluence={0.25}
+        />
       </div>
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -28,51 +51,56 @@ function App() {
           },
         }}
       />
+
+      {/* Floating Pill Navbar */}
       <nav className="navbar">
         <NavLink to="/" className="navbar-brand" onClick={() => setMenuOpen(false)}>
-          <Stethoscope size={24} />
-          Saarthi AI 🏥
+          <Stethoscope size={22} />
+          Saarthi AI
         </NavLink>
         <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         <ul className={`navbar-links ${menuOpen ? 'open' : ''}`}>
           <li>
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) => isActive ? 'active' : ''}
-              onClick={() => setMenuOpen(false)}
-            >
-              Admin Dashboard
+            <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''} onClick={() => setMenuOpen(false)}>
+              Home
             </NavLink>
           </li>
           <li>
-            <NavLink
-              to="/patient"
-              className={({ isActive }) => isActive ? 'active' : ''}
-              onClick={() => setMenuOpen(false)}
-            >
+            <NavLink to="/patient" className={({ isActive }) => isActive ? 'active' : ''} onClick={() => setMenuOpen(false)}>
               Patient Triage
             </NavLink>
           </li>
           <li>
-            <NavLink
-              to="/about"
-              className={({ isActive }) => isActive ? 'active' : ''}
-              onClick={() => setMenuOpen(false)}
-            >
-              About
+            <NavLink to="/voice-agent" className={({ isActive }) => isActive ? 'active' : ''} onClick={() => setMenuOpen(false)}>
+              Voice Agent
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/live-queue" className={({ isActive }) => isActive ? 'active' : ''} onClick={() => setMenuOpen(false)}>
+              Live Queue
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/ai-insights" className={({ isActive }) => isActive ? 'active' : ''} onClick={() => setMenuOpen(false)}>
+              AI Insights
             </NavLink>
           </li>
         </ul>
       </nav>
+
       <Routes>
-        <Route path="/" element={<AdminDashboard />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/patient" element={<PatientPortal />} />
         <Route path="/about" element={<About />} />
+        <Route path="/live-queue" element={<LiveQueue />} />
+        <Route path="/ai-insights" element={<AIInsights />} />
+        <Route path="/voice-agent" element={<VoiceAgent />} />
       </Routes>
+
+      <Footer />
     </Router>
   );
 }
