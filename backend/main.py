@@ -16,10 +16,19 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional
 import os
 
-from models import TriageInput, TriageResult, QueueItem, Department, Insight, ActivityFeedItem, StatsData
-from triage_engine import get_triage, get_insights
+from models import (
+    TriageInput, EnhancedTriageResult, QueueItem, Department, Insight,
+    ActivityFeedItem, StatsData, PriorityScoreRequest, PriorityScoreResponse,
+    WaitTimeRequest, WaitTimeResponse, DepartmentRouteRequest, DepartmentRouteResponse,
+    QueueStatusResponse
+)
+from triage_engine import get_enhanced_triage, get_insights
 from mock_data import QUEUE_DATA, DEPARTMENTS, FEED_DATA
 from voice_agent import process_voice_triage, GREETINGS
+from features.department_router import route_to_department, get_department_info
+from features.priority_scorer import calculate_priority_score
+from features.wait_time_predictor import predict_wait_time
+from features.smart_queue import reorder_queue, should_fast_track, calculate_queue_score
 
 app = FastAPI(title="Saarthi AI Backend")
 
@@ -40,9 +49,9 @@ QUEUE_COUNTER = 16
 active_connections: List[WebSocket] = []
 
 def sort_queue():
+    """Smart queue sorting using composite scoring."""
     global queue_items
-    level_map = {"critical": 0, "moderate": 1, "mild": 2}
-    queue_items.sort(key=lambda x: (level_map.get(x["triageLevel"], 3), x.get("timestamp", "")))
+    queue_items = reorder_queue(queue_items)
 
 async def update_statuses():
     while True:
@@ -62,24 +71,57 @@ async def startup_event():
     sort_queue()
     asyncio.create_task(update_statuses())
 
-@app.post("/api/triage", response_model=TriageResult)
+
+# =================== ENHANCED TRIAGE ENDPOINT ===================
+
+@app.post("/api/triage", response_model=EnhancedTriageResult)
 async def triage_patient(data: TriageInput):
     global QUEUE_COUNTER
-    triage_info = get_triage(data.dict())
+    
+    # 1. AI Triage
+    triage_info = get_enhanced_triage(data.dict())
     
     triage_level = triage_info.get("triage_level", "mild")
     department = triage_info.get("department", "General OPD")
-    wait_time = triage_info.get("wait_time_minutes", 30)
-    ai_reasoning = triage_info.get("ai_reasoning", "Processed by rule-based fallback.")
+    ai_reasoning = triage_info.get("ai_reasoning", "Processed by AI triage engine.")
+    
+    # 2. Department routing (validate/enhance AI's department choice)
+    route_result = route_to_department(data.chief_complaint, data.age, data.gender)
+    if route_result["confidence"] > 0.8:
+        department = route_result["department"]
+    
+    # 3. Priority scoring
+    priority_data = data.dict()
+    priority_data["triage_level"] = triage_level
+    priority_result = calculate_priority_score(priority_data)
+    
+    # 4. Fast-track check
+    fast_track = should_fast_track(data.dict())
+    
+    # 5. Wait time prediction
+    wait_result = predict_wait_time(department, queue_items, triage_level)
+    wait_time = wait_result["estimated_wait_minutes"]
+    
+    if triage_level == "critical" or fast_track["fast_track"]:
+        wait_time = 0
     
     QUEUE_COUNTER += 1
-    token = f"APL-{random.randint(1000, 9999)}"
+    token = f"EMG-{random.randint(1000, 9999)}" if triage_level == "critical" else f"APL-{random.randint(1000, 9999)}"
     time_str = datetime.now().strftime("%I:%M %p")
     
-    msg = f"Kripya Token le lein aur {department} counter par jaayein. Wait time: {wait_time} mins."
+    # Message
     if triage_level == "critical":
-        msg = "Kripya Token le lein aur Emergency OPD counter par turant jaayein."
-        
+        msg = "🚨 EMERGENCY: Turant Emergency OPD counter par jaayein. Fast-track activated."
+    elif triage_level == "moderate":
+        msg = f"Kripya Token le lein aur {department} counter par jaayein. Wait time: ~{wait_time} mins."
+    else:
+        msg = f"Kripya Token le lein aur {department} counter par jaayein. Wait time: ~{wait_time} mins."
+    
+    # Urgency level mapping
+    urgency_map = {"critical": "immediate", "moderate": "semi-urgent", "mild": "non-urgent"}
+    urgency_level = triage_info.get("urgency_level", urgency_map.get(triage_level, "non-urgent"))
+    
+    # Add to queue
     new_patient = {
         "id": str(uuid.uuid4()),
         "token": token,
@@ -90,7 +132,11 @@ async def triage_patient(data: TriageInput):
         "department": department,
         "waitTime": wait_time,
         "status": "waiting",
-        "timestamp": time_str
+        "timestamp": time_str,
+        "assignedDoctor": route_result.get("doctor"),
+        "roomNumber": route_result.get("room"),
+        "isEmergency": triage_level == "critical" or fast_track["fast_track"],
+        "priorityScore": priority_result["priority_score"]
     }
     
     queue_items.insert(0, new_patient)
@@ -104,16 +150,114 @@ async def triage_patient(data: TriageInput):
         "department": department
     })
     
-    return TriageResult(
+    return EnhancedTriageResult(
         token=token,
         triageLevel=triage_level,
+        urgencyLevel=urgency_level,
+        severityScore=triage_info.get("severity_score", 3),
         department=department,
         waitTimeMinutes=wait_time,
-        queuePosition=QUEUE_COUNTER,
+        queuePosition=wait_result["queue_position"],
         message=msg,
         aiReasoning=ai_reasoning,
+        confidenceScore=triage_info.get("confidence_score", 0.7),
+        riskFactors=triage_info.get("risk_factors", []) + priority_result.get("risk_factors", []),
+        recommendedAction=triage_info.get("recommended_action"),
+        possibleConditions=triage_info.get("possible_conditions", []),
+        priorityScore=priority_result["priority_score"],
+        emergencyFlags=priority_result.get("emergency_flags", []),
+        crowdStatus=wait_result["crowd_status"],
+        patientsAhead=wait_result["patients_ahead"],
+        departmentLoad=wait_result["department_load"],
+        assignedDoctor=route_result.get("doctor"),
+        roomNumber=route_result.get("room"),
+        isEmergency=triage_level == "critical" or fast_track["fast_track"],
+        fastTrack=fast_track["fast_track"],
+        fastTrackReason=fast_track.get("reason"),
+        followUpNeeded=triage_info.get("follow_up_needed", False),
         timestamp=time_str
     )
+
+
+# =================== NEW API ENDPOINTS ===================
+
+@app.post("/api/predict-wait", response_model=WaitTimeResponse)
+async def api_predict_wait(data: WaitTimeRequest):
+    """Predict wait time for a department."""
+    result = predict_wait_time(data.department, queue_items, data.triage_level)
+    return WaitTimeResponse(
+        estimatedWaitMinutes=result["estimated_wait_minutes"],
+        queuePosition=result["queue_position"],
+        patientsAhead=result["patients_ahead"],
+        crowdStatus=result["crowd_status"],
+        departmentLoad=result["department_load"]
+    )
+
+@app.post("/api/priority-score", response_model=PriorityScoreResponse)
+async def api_priority_score(data: PriorityScoreRequest):
+    """Calculate priority score for symptoms."""
+    patient_data = {
+        "chief_complaint": data.symptoms,
+        "age": data.age,
+        "gender": data.gender,
+        "has_critical_symptoms": data.has_critical_symptoms,
+        "has_fever_chest_breathing": data.has_critical_symptoms,
+        "duration": data.duration
+    }
+    result = calculate_priority_score(patient_data)
+    return PriorityScoreResponse(
+        priorityScore=result["priority_score"],
+        priorityLevel=result["priority_level"],
+        emergencyFlags=result["emergency_flags"],
+        riskFactors=result["risk_factors"],
+        confidenceScore=result["confidence_score"]
+    )
+
+@app.post("/api/department-route", response_model=DepartmentRouteResponse)
+async def api_department_route(data: DepartmentRouteRequest):
+    """Route symptoms to the best department."""
+    result = route_to_department(data.symptoms, data.age, data.gender)
+    return DepartmentRouteResponse(
+        department=result["department"],
+        confidence=result["confidence"],
+        reasoning=result["reasoning"],
+        alternativeDepartment=result.get("alternative_department"),
+        isEmergency=result.get("is_emergency", False),
+        doctor=result.get("doctor"),
+        room=result.get("room")
+    )
+
+@app.get("/api/queue-status", response_model=QueueStatusResponse)
+async def api_queue_status():
+    """Get intelligent queue status dashboard."""
+    active = [p for p in queue_items if p["status"] != "done"]
+    
+    by_dept = {}
+    for p in active:
+        dept = p.get("department", "Unknown")
+        by_dept[dept] = by_dept.get(dept, 0) + 1
+    
+    by_severity = {"critical": 0, "moderate": 0, "mild": 0}
+    for p in active:
+        level = p.get("triageLevel", "mild")
+        by_severity[level] = by_severity.get(level, 0) + 1
+    
+    wait_times = [p["waitTime"] for p in active if p["waitTime"] > 0]
+    avg_wait = sum(wait_times) // len(wait_times) if wait_times else 0
+    
+    fast_track_count = len([p for p in active if p.get("isEmergency", False)])
+    
+    return QueueStatusResponse(
+        totalInQueue=len(active),
+        byDepartment=by_dept,
+        bySeverity=by_severity,
+        avgWaitTime=avg_wait,
+        criticalCount=by_severity["critical"],
+        fastTrackActive=fast_track_count
+    )
+
+
+# =================== EXISTING ENDPOINTS (PRESERVED) ===================
 
 @app.get("/api/queue", response_model=List[QueueItem])
 async def get_queue():
@@ -146,7 +290,8 @@ async def add_simulated_patient():
         "department": department,
         "waitTime": wait_time,
         "status": 'waiting',
-        "timestamp": time_str
+        "timestamp": time_str,
+        "priorityScore": random.randint(20, 90)
     }
     
     queue_items.insert(0, new_patient)
@@ -172,6 +317,7 @@ async def get_stats():
     total_today = len(queue_items) + 1200
     critical = len([p for p in queue_items if p["triageLevel"] == "critical"])
     active_depts = len(set(p["department"] for p in queue_items if p["status"] != "done"))
+    fast_track = len([p for p in queue_items if p.get("isEmergency", False)])
     
     wait_times = [p["waitTime"] for p in queue_items if p["status"] != "done" and p["waitTime"] > 0]
     avg_wait = sum(wait_times) // len(wait_times) if wait_times else 0
@@ -181,7 +327,8 @@ async def get_stats():
         avgWaitTime=avg_wait,
         criticalCount=critical,
         activeDepartments=active_depts,
-        last_updated=datetime.now().strftime("%I:%M:%S %p")
+        last_updated=datetime.now().strftime("%I:%M:%S %p"),
+        fastTrackCount=fast_track
     )
 
 @app.get("/api/insights", response_model=List[Insight])
@@ -218,7 +365,6 @@ async def websocket_endpoint(websocket: WebSocket):
 # =================== VOICE AGENT ENDPOINTS ===================
 
 def _generate_livekit_token(identity: str, room_name: str, metadata: str = "") -> str:
-    """Generate a LiveKit-compatible JWT access token using manual JWT construction."""
     api_key = os.getenv("LIVEKIT_API_KEY", "")
     api_secret = os.getenv("LIVEKIT_API_SECRET", "")
     
@@ -231,7 +377,7 @@ def _generate_livekit_token(identity: str, room_name: str, metadata: str = "") -
         "sub": identity,
         "iat": now,
         "nbf": now,
-        "exp": now + 3600,  # 1 hour TTL
+        "exp": now + 3600,
         "jti": identity,
         "video": {
             "room": room_name,
@@ -243,7 +389,6 @@ def _generate_livekit_token(identity: str, room_name: str, metadata: str = "") -
         "metadata": metadata,
     }
     
-    # Manual JWT encoding (HS256)
     def b64url(data: bytes) -> str:
         return base64.urlsafe_b64encode(data).rstrip(b'=').decode()
     
@@ -256,7 +401,6 @@ def _generate_livekit_token(identity: str, room_name: str, metadata: str = "") -
 
 @app.get("/api/livekit/token")
 async def get_livekit_token(language: str = "hi-IN"):
-    """Generate LiveKit room access token for a patient."""
     room_id = str(uuid.uuid4())[:8]
     room_name = f"saarthi-voice-{room_id}"
     patient_id = f"patient-{room_id}"
@@ -285,7 +429,6 @@ async def voice_triage(
     audio: UploadFile = File(...),
     language: str = Form("hi-IN"),
 ):
-    """Process voice audio for triage: STT → Gemini → TTS → Queue."""
     audio_bytes = await audio.read()
     
     if len(audio_bytes) == 0:
@@ -296,7 +439,6 @@ async def voice_triage(
     
     result = await process_voice_triage(audio_bytes, language)
     
-    # If triage was successful, also add to internal queue
     if result.get("triage_data"):
         td = result["triage_data"]
         token = td.get("token", f"APL-{random.randint(1000,9999)}")
@@ -326,7 +468,6 @@ async def voice_triage(
             "department": td.get("department", "General OPD"),
         })
         
-        # Broadcast via WebSocket
         for conn in active_connections:
             try:
                 await conn.send_json(queue_items)
@@ -338,7 +479,6 @@ async def voice_triage(
 
 @app.get("/api/voice/greeting")
 async def get_greeting(language: str = "hi-IN"):
-    """Get Saarthi greeting in specified language with TTS audio."""
     from sarvam_tts import text_to_speech
     greeting_text = GREETINGS.get(language, GREETINGS["hi-IN"])
     tts_result = await text_to_speech(greeting_text, language_code=language)
@@ -396,10 +536,8 @@ async def ocr_triage(
     image: UploadFile = File(...),
     language: str = Form("hi"),
 ):
-    """Process a prescription/symptom image via Gemini Vision for triage."""
     image_bytes = await image.read()
 
-    # Size check: 5MB max
     if len(image_bytes) > 5 * 1024 * 1024:
         return JSONResponse(
             status_code=400,
@@ -412,13 +550,11 @@ async def ocr_triage(
             content={"error": "Empty image file.", "ocr_confidence": "low"}
         )
 
-    # Determine MIME type
     content_type = image.content_type or "image/jpeg"
     if content_type not in ["image/jpeg", "image/png", "image/webp", "application/pdf"]:
         content_type = "image/jpeg"
 
     try:
-        # Send to Gemini Vision
         image_part = {
             "mime_type": content_type,
             "data": image_bytes,
@@ -426,7 +562,6 @@ async def ocr_triage(
         response = ocr_model.generate_content([OCR_TRIAGE_PROMPT, image_part])
         raw_text = response.text.strip()
 
-        # Parse JSON from response
         import re as ocr_re
         match = ocr_re.search(r'\{.*\}', raw_text, ocr_re.DOTALL)
         if match:
@@ -450,7 +585,6 @@ async def ocr_triage(
             "triage_result": None,
         }
 
-    # Generate token and triage result
     severity = ocr_result.get("severity", "mild")
     department = ocr_result.get("department", "General OPD")
 
@@ -467,7 +601,6 @@ async def ocr_triage(
     symptoms_text = ", ".join(ocr_result.get("symptoms_found", ["Image-based triage"]))
     time_str = datetime.now().strftime("%I:%M %p")
 
-    # Build triage result
     triage_result = {
         "token": token,
         "triageLevel": severity,
@@ -482,7 +615,6 @@ async def ocr_triage(
         "timestamp": time_str,
     }
 
-    # Add to queue (only if confidence is not low)
     if ocr_result.get("ocr_confidence", "low") != "low":
         new_patient = {
             "id": str(uuid.uuid4()),
@@ -508,7 +640,6 @@ async def ocr_triage(
             "department": department,
         })
 
-        # Broadcast via WebSocket
         for conn in active_connections:
             try:
                 await conn.send_json(queue_items)

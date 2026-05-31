@@ -4,7 +4,8 @@ import { Send, Printer, User, Building2, Mic, MicOff, Paperclip, X, Image as Ima
 import { QRCodeSVG } from 'qrcode.react';
 import type { ChatMessage, TriageResult } from '../types';
 import { triagePatient } from '../api/client';
-import EmergencyAlertPanel from '../components/EmergencyAlertPanel';
+import EmergencyAlertModal from '../components/triage/EmergencyAlertModal';
+import TriageResultCard from '../components/triage/TriageResultCard';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -379,7 +380,7 @@ export default function PatientPortal() {
   return (
     <div className="wa-container">
       {showEmergency && emergencyResult && (
-        <EmergencyAlertPanel result={emergencyResult} />
+        <EmergencyAlertModal result={emergencyResult} onDismiss={() => setShowEmergency(false)} />
       )}
       {/* WhatsApp-style header */}
       <div className="wa-header">
@@ -403,89 +404,7 @@ export default function PatientPortal() {
         {messages.map(msg => (
           <div key={msg.id}>
             {msg.isTriageResult && msg.triageResult ? (
-              <div className={`triage-card ${msg.triageResult.triageLevel}`}>
-                <div className="no-print">
-                  <div className="token-number">#{msg.triageResult.token}</div>
-                  <div className="detail-row">
-                    <span className="label">Triage Level</span>
-                    <span style={{ color: getTriageLevelDisplay(msg.triageResult.triageLevel).color, fontWeight: 700 }}>
-                      {getTriageLevelDisplay(msg.triageResult.triageLevel).emoji} {getTriageLevelDisplay(msg.triageResult.triageLevel).text}
-                    </span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Department</span>
-                    <span style={{ fontWeight: 600 }}>{msg.triageResult.department}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label"><User size={14} style={{display:'inline'}}/> Assigned Doctor</span>
-                    <span style={{ fontWeight: 600 }}>{msg.triageResult.assignedDoctor || 'On-Duty Physician'}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label"><Building2 size={14} style={{display:'inline'}}/> Room</span>
-                    <span style={{ fontWeight: 600 }}>{msg.triageResult.roomNumber || 'General'}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Wait Time</span>
-                    <span style={{ fontWeight: 600 }}>{msg.triageResult.waitTimeStr}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Queue Position</span>
-                    <span style={{ fontWeight: 600 }}>{msg.triageResult.queueStr}</span>
-                  </div>
-
-                  {msg.triageResult.aiReasoning && (
-                    <details className="ai-reasoning" style={{ margin: '12px 0', padding: '8px', background: 'rgba(0, 212, 170, 0.1)', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(0, 212, 170, 0.2)' }}>
-                      <summary style={{ cursor: 'pointer', color: '#00d4aa', fontWeight: 600 }}>🤖 How was this decided?</summary>
-                      <p style={{ marginTop: 8, color: '#e2e8f0', lineHeight: 1.4 }}>{msg.triageResult.aiReasoning}</p>
-                    </details>
-                  )}
-
-                  <div className="message">
-                    {msg.triageResult.message}
-                  </div>
-                  <button className="print-btn no-print" onClick={handlePrint}>
-                    <Printer size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-                    Print Token
-                  </button>
-                </div>
-
-                <div className="print-token-only" style={{ display: 'none' }}>
-                  <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', lineHeight: 1.6, padding: '24px', border: '2px solid #000', margin: '20px auto', maxWidth: '400px' }}>
-                    {`┌─────────────────────────────────┐
-│  🏥 SAARTHI AI — KGMU LUCKNOW  │
-│  Token: ${(msg.triageResult.token || '').padEnd(23)} │
-├─────────────────────────────────┤
-│  Name: ${(msg.triageResult.name || 'Patient').padEnd(24)} │
-│  Age: ${String(msg.triageResult.age || '--').padEnd(25)} │
-│  Department: ${(msg.triageResult.department || '').padEnd(18)} │
-│  Doctor: ${(msg.triageResult.assignedDoctor || 'On-Duty Physician').padEnd(22)} │
-│  Room: ${(msg.triageResult.roomNumber || 'General').padEnd(24)} │
-│  Queue Position: ${(msg.triageResult.queueStr || '').padEnd(14)} │
-│  Est. Wait: ${(msg.triageResult.waitTimeStr || '').padEnd(19)} │
-│  Date: ${new Date().toLocaleDateString('en-IN').padEnd(24)} │
-│  Time: ${new Date().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'}).padEnd(24)} │
-├─────────────────────────────────┤
-│  Please proceed to Room ${(msg.triageResult.roomNumber || 'General').padEnd(7)} │
-│  KGMU OPD | Est. 1905           │
-└─────────────────────────────────┘`}
-                  </div>
-                </div>
-
-                {msg.triageResult.aiReasoning && (
-                  <details className="ai-reasoning" style={{ margin: '12px 0', padding: '8px', background: 'rgba(0, 212, 170, 0.1)', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(0, 212, 170, 0.2)' }}>
-                    <summary style={{ cursor: 'pointer', color: '#00d4aa', fontWeight: 600 }}>🤖 How was this decided?</summary>
-                    <p style={{ marginTop: 8, color: '#e2e8f0', lineHeight: 1.4 }}>{msg.triageResult.aiReasoning}</p>
-                  </details>
-                )}
-
-                <div className="message">
-                  {msg.triageResult.message}
-                </div>
-                <button className="print-btn no-print" onClick={handlePrint}>
-                  <Printer size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
-                  Print Token
-                </button>
-              </div>
+              <TriageResultCard result={msg.triageResult} onPrint={handlePrint} />
             ) : (
               <div style={{ display: 'flex', gap: '8px', alignSelf: msg.sender === 'bot' ? 'flex-start' : 'flex-end', maxWidth: '85%' }}>
                 {msg.sender === 'bot' && (

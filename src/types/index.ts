@@ -1,5 +1,6 @@
 export type TriageLevel = 'critical' | 'moderate' | 'mild';
 export type PatientStatus = 'waiting' | 'called' | 'in-consultation' | 'done';
+export type UrgencyLevel = 'immediate' | 'urgent' | 'semi-urgent' | 'non-urgent';
 
 export interface Patient {
   id: string;
@@ -28,6 +29,25 @@ export interface TriageResult {
   isEmergency?: boolean;
   urgencyReason?: string;
   recommendedAction?: string;
+  // Enhanced fields
+  urgencyLevel?: UrgencyLevel;
+  severityScore?: number;
+  confidenceScore?: number;
+  riskFactors?: string[];
+  possibleConditions?: string[];
+  priorityScore?: number;
+  emergencyFlags?: string[];
+  crowdStatus?: string;
+  patientsAhead?: number;
+  departmentLoad?: string;
+  fastTrack?: boolean;
+  fastTrackReason?: string;
+  followUpNeeded?: boolean;
+  // Display helpers (set by frontend)
+  name?: string;
+  age?: number;
+  waitTimeStr?: string;
+  queueStr?: string;
 }
 
 export interface QueueItem {
@@ -44,6 +64,7 @@ export interface QueueItem {
   assignedDoctor?: string;
   roomNumber?: string;
   isEmergency?: boolean;
+  priorityScore?: number;
 }
 
 export interface Department {
@@ -82,4 +103,22 @@ export interface StatsData {
   avgWaitTime: number;
   criticalCount: number;
   activeDepartments: number;
+  fastTrackCount?: number;
+}
+
+export interface WaitTimeResult {
+  estimatedWaitMinutes: number;
+  queuePosition: number;
+  patientsAhead: number;
+  crowdStatus: string;
+  departmentLoad: string;
+}
+
+export interface QueueStatusResult {
+  totalInQueue: number;
+  byDepartment: Record<string, number>;
+  bySeverity: Record<string, number>;
+  avgWaitTime: number;
+  criticalCount: number;
+  fastTrackActive: number;
 }

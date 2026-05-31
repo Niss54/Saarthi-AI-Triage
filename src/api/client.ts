@@ -1,11 +1,11 @@
-import type { QueueItem, TriageResult, Department, Insight, ActivityFeedItem, StatsData } from '../types';
+import type { QueueItem, TriageResult, Department, Insight, ActivityFeedItem, StatsData, WaitTimeResult, QueueStatusResult } from '../types';
 import { mockQueue, mockDepartments, mockInsights, mockFeed, mockStats, generateRandomPatient } from '../data/mockData';
 import { performTriage } from '../utils/triageLogic';
 
 const API_BASE = 'http://localhost:8000';
-const USE_REAL_API = true; // Toggle to true when backend is ready
+const USE_REAL_API = true;
 
-// --- Triage ---
+// --- Enhanced Triage ---
 export async function triagePatient(data: {
   name: string;
   age: number;
@@ -24,7 +24,6 @@ export async function triagePatient(data: {
     });
     return res.json();
   }
-  // Mock: use local triage logic
   await new Promise(r => setTimeout(r, 2000));
   return performTriage(data);
 }
@@ -80,4 +79,26 @@ export async function getFeed(): Promise<ActivityFeedItem[]> {
     return res.json();
   }
   return [...mockFeed];
+}
+
+// --- NEW: Wait Time Prediction ---
+export async function predictWaitTime(department: string, triageLevel: string = 'mild'): Promise<WaitTimeResult> {
+  if (USE_REAL_API) {
+    const res = await fetch(`${API_BASE}/api/predict-wait`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ department, triage_level: triageLevel }),
+    });
+    return res.json();
+  }
+  return { estimatedWaitMinutes: 25, queuePosition: 5, patientsAhead: 4, crowdStatus: 'Moderate', departmentLoad: 'Normal Load' };
+}
+
+// --- NEW: Queue Status ---
+export async function getQueueStatus(): Promise<QueueStatusResult> {
+  if (USE_REAL_API) {
+    const res = await fetch(`${API_BASE}/api/queue-status`);
+    return res.json();
+  }
+  return { totalInQueue: 15, byDepartment: {}, bySeverity: {}, avgWaitTime: 20, criticalCount: 2, fastTrackActive: 1 };
 }
