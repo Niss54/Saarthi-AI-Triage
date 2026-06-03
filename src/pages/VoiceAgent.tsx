@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Mic, MicOff, Volume2, VolumeX, RotateCcw, Languages, Phone, PhoneOff, AlertTriangle, Stethoscope, Wifi, WifiOff } from 'lucide-react';
-import EmergencyAlertPanel from '../components/EmergencyAlertPanel';
+import EmergencyAlertModal from '../components/triage/EmergencyAlertModal';
 import Orb from '../components/Orb';
 import type { TriageResult } from '../types';
 
@@ -85,30 +85,50 @@ export default function VoiceAgent() {
     setShowEmergency(false);
 
     try {
-      // Get LiveKit token & greeting
-      const tokenRes = await fetch(`${API_BASE}/api/livekit/token?language=${lang}`);
-      if (!tokenRes.ok) throw new Error('Token fetch failed');
-      const tokenData = await tokenRes.json();
+      // Test backend connectivity first
+      const healthCheck = await fetch(`${API_BASE}/api/stats`).catch(() => null);
+      if (!healthCheck || !healthCheck.ok) {
+        throw new Error('Backend server is not running on port 8000');
+      }
 
       setLivekitConnected(true);
       setVoiceState('greeting');
 
-      // Show greeting in transcript
-      addEntry(tokenData.greeting || 'Namaste! Main Saarthi hun.', 'ai');
+      // Try to get LiveKit token & greeting
+      let greetingText = lang === 'hi-IN' 
+        ? 'Namaste! Main Saarthi hun, KGMU ka AI sahayak. Aap apne symptoms Hindi ya English mein bata sakte hain.' 
+        : 'Hello! I\'m Saarthi, KGMU\'s AI assistant. Please describe your symptoms and I\'ll help route you to the right department.';
 
-      // Fetch and play TTS greeting
-      const greetRes = await fetch(`${API_BASE}/api/voice/greeting?language=${lang}`);
-      if (greetRes.ok) {
-        const greetData = await greetRes.json();
-        if (greetData.audio_base64) {
-          playAudio(greetData.audio_base64);
+      try {
+        const tokenRes = await fetch(`${API_BASE}/api/livekit/token?language=${lang}`);
+        if (tokenRes.ok) {
+          const tokenData = await tokenRes.json();
+          if (tokenData.greeting) greetingText = tokenData.greeting;
         }
+      } catch(e) {
+        console.warn('LiveKit token fetch failed (non-critical):', e);
+      }
+
+      // Show greeting in transcript
+      addEntry(greetingText, 'ai');
+
+      // Try TTS greeting (non-blocking)
+      try {
+        const greetRes = await fetch(`${API_BASE}/api/voice/greeting?language=${lang}`);
+        if (greetRes.ok) {
+          const greetData = await greetRes.json();
+          if (greetData.audio_base64) {
+            playAudio(greetData.audio_base64);
+          }
+        }
+      } catch (e) {
+        console.warn('TTS greeting failed (non-critical):', e);
       }
 
       // After greeting, transition to listening
       setTimeout(() => {
         setVoiceState('listening');
-        addEntry(lang === 'hi-IN' ? 'Ab aap bol sakte hain...' : 'You can speak now...', 'system');
+        addEntry(lang === 'hi-IN' ? 'Mic button dabayein aur bolein...' : 'Press the mic button and speak...', 'system');
       }, 2500);
 
     } catch (err) {
@@ -119,7 +139,7 @@ export default function VoiceAgent() {
     }
   };
 
-  // Start recording audio
+  // Start recording audio — using AudioContext to produce WAV directly
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -134,53 +154,49 @@ export default function VoiceAgent() {
       streamRef.current = stream;
       audioChunksRef.current = [];
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
-      });
+      // Use AudioContext to capture raw PCM at 16kHz mono
+      const audioCtx = new window.AudioContext({ sampleRate: 16000 });
+      audioCtxRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      // ScriptProcessor to capture raw PCM samples
+      const bufferSize = 4096;
+      const processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+      const pcmChunks: Float32Array[] = [];
+
+      processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        pcmChunks.push(new Float32Array(inputData));
       };
 
-      mediaRecorder.onstop = () => {
-        // Audio is ready for processing
-      };
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
 
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(250); // Collect data every 250ms
+      // Store pcmChunks and processor for later access
+      (window as any).__saarthiPcmChunks = pcmChunks;
+      (window as any).__saarthiProcessor = processor;
+
       setIsRecording(true);
 
       // --- VAD (Voice Activity Detection) ---
-      const audioCtx = new window.AudioContext();
-      audioCtxRef.current = audioCtx;
-      const analyser = audioCtx.createAnalyser();
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
-      analyser.fftSize = 256;
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      
       let silenceStart = Date.now();
       let hasSpoken = false;
 
       vadIntervalRef.current = window.setInterval(() => {
-        if (mediaRecorder.state === 'inactive') {
-          if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
-          return;
-        }
-        analyser.getByteFrequencyData(dataArray);
+        analyser.getByteFrequencyData(freqData);
         let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-        const avg = sum / dataArray.length;
+        for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+        const avg = sum / freqData.length;
 
         if (avg > 15) {
           silenceStart = Date.now();
           hasSpoken = true;
-        } else if (hasSpoken && Date.now() - silenceStart > 1800) {
-          // 1.8 seconds of silence after speaking -> auto stop
+        } else if (hasSpoken && Date.now() - silenceStart > 2000) {
+          // 2 seconds of silence after speaking -> auto stop
           if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
           stopRecordingAndProcess();
         }
@@ -192,11 +208,63 @@ export default function VoiceAgent() {
     }
   };
 
+  // Helper: Convert Float32 PCM samples to WAV Blob
+  const pcmToWavBlob = (pcmChunks: Float32Array[], sampleRate: number): Blob => {
+    // Merge all chunks
+    let totalLength = 0;
+    for (const chunk of pcmChunks) totalLength += chunk.length;
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of pcmChunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    // Convert to 16-bit PCM
+    const int16 = new Int16Array(merged.length);
+    for (let i = 0; i < merged.length; i++) {
+      const s = Math.max(-1, Math.min(1, merged[i]));
+      int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    // Build WAV header
+    const wavBuffer = new ArrayBuffer(44 + int16.length * 2);
+    const view = new DataView(wavBuffer);
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + int16.length * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);         // chunk size
+    view.setUint16(20, 1, true);          // PCM format
+    view.setUint16(22, 1, true);          // mono
+    view.setUint32(24, sampleRate, true); // sample rate
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true);          // block align
+    view.setUint16(34, 16, true);         // bits per sample
+    writeString(36, 'data');
+    view.setUint32(40, int16.length * 2, true);
+
+    const wavBytes = new Uint8Array(wavBuffer);
+    const pcmBytes = new Uint8Array(int16.buffer);
+    wavBytes.set(pcmBytes, 44);
+
+    return new Blob([wavBytes], { type: 'audio/wav' });
+  };
+
   // Stop recording and send to backend
   const stopRecordingAndProcess = async () => {
-    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
-
     if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
+
+    // Disconnect processor
+    const processor = (window as any).__saarthiProcessor;
+    if (processor) {
+      try { processor.disconnect(); } catch {}
+    }
+
     if (audioCtxRef.current) {
       audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
@@ -205,17 +273,23 @@ export default function VoiceAgent() {
     setIsRecording(false);
     setVoiceState('processing');
 
-    // Stop the recorder
-    mediaRecorderRef.current.stop();
     streamRef.current?.getTracks().forEach(t => t.stop());
 
     // Wait a bit for the last data chunk
     await new Promise(r => setTimeout(r, 300));
 
-    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    // Create WAV blob from captured PCM chunks
+    const pcmChunks = (window as any).__saarthiPcmChunks as Float32Array[] | undefined;
+    if (!pcmChunks || pcmChunks.length === 0) {
+      addEntry(lang === 'hi-IN' ? 'Audio capture nahi hua. Dubara try karein.' : 'Audio capture failed. Please try again.', 'system');
+      setVoiceState('listening');
+      return;
+    }
 
-    if (audioBlob.size < 1000) {
-      addEntry(lang === 'hi-IN' ? 'Audio bahut chhota hai. Dubara bolein.' : 'Audio too short. Please speak again.', 'system');
+    const audioBlob = pcmToWavBlob(pcmChunks, 16000);
+
+    if (audioBlob.size < 5000) {
+      addEntry(lang === 'hi-IN' ? 'Audio bahut chhota hai. Zyada der tak bolein.' : 'Audio too short. Please speak longer.', 'system');
       setVoiceState('listening');
       return;
     }
@@ -223,9 +297,9 @@ export default function VoiceAgent() {
     addEntry(lang === 'hi-IN' ? 'Aapki awaaz process ho rahi hai...' : 'Processing your voice...', 'system');
 
     try {
-      // Send audio to backend for full pipeline
+      // Send WAV audio to backend for full pipeline
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'voice.webm');
+      formData.append('audio', audioBlob, 'voice.wav');
       formData.append('language', lang);
 
       const res = await fetch(`${API_BASE}/api/voice/triage`, {
@@ -298,8 +372,14 @@ export default function VoiceAgent() {
   // End session
   const endSession = () => {
     stopAudio();
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+    if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
+    const processor = (window as any).__saarthiProcessor;
+    if (processor) {
+      try { processor.disconnect(); } catch {}
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
     }
     streamRef.current?.getTracks().forEach(t => t.stop());
     setIsRecording(false);
@@ -330,7 +410,7 @@ export default function VoiceAgent() {
     <div className="page-container va-page">
       {/* Emergency Panel Overlay */}
       {showEmergency && triageResult && (
-        <EmergencyAlertPanel result={triageResult} />
+        <EmergencyAlertModal result={triageResult} onDismiss={() => setShowEmergency(false)} />
       )}
 
       {/* Header */}
