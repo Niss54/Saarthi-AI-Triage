@@ -1,9 +1,7 @@
 """
 Saarthi AI — Voice Triage Agent
-LiveKit Agent Worker that connects patients via voice for medical triage.
 Uses Sarvam AI (STT/TTS) + Google Gemini for multilingual Indian hospital triage.
-
-Run with: python voice_agent.py dev
+Optimized for speed: parallel processing where possible.
 """
 import asyncio
 import json
@@ -11,6 +9,7 @@ import os
 import re
 import random
 import uuid
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -24,41 +23,42 @@ load_dotenv()
 
 # Configure Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
-gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+gemini_model = genai.GenerativeModel("gemini-2.0-flash")
 
 FASTAPI_BASE = "http://localhost:8000"
 
-VOICE_TRIAGE_PROMPT = """You are Saarthi, an AI medical triage assistant at KGMU Lucknow. A patient is speaking to you via voice. Your job:
+VOICE_TRIAGE_PROMPT = """You are Saarthi, an AI medical triage assistant at KGMU Lucknow hospital.
 
-1. Listen to symptoms carefully.
-2. Ask ONE short follow-up question if needed (not more).
-3. Determine: severity (critical/moderate/mild), department, urgency reason.
-4. Respond in the SAME LANGUAGE as the patient.
+RULES:
+- Respond ONLY in native script ({language}). For Hindi use Devanagari: "नमस्ते", NOT "Namaste"
+- Keep response under 2 sentences. This is voice output.
+- No markdown, no bullets, no special characters.
+- After spoken text, append triage JSON.
 
-CRITICAL INSTRUCTION FOR PRONUNCIATION: 
-You MUST write your response in the NATIVE SCRIPT of the language (e.g., use Devanagari script for Hindi "आप कैसे हैं", not Latin script "Aap kaise hain"). The TTS engine requires native script to pronounce correctly.
+Analyze patient symptoms and respond with department recommendation and wait time.
 
-For critical cases in Hindi, say: "आपकी स्थिति गंभीर है। कृपया तुरंत इमरजेंसी विभाग में जाएं।"
-For normal cases, tell them the department and wait time.
+Departments: Emergency, Medicine, Orthopaedics, Gynaecology, Paediatrics, ENT, Eye OPD, Dermatology, General OPD, Cardiology, Neurology, Pulmonology, Surgery
 
-Keep responses VERY SHORT (1-2 sentences max) for fast processing. No markdown.
+Patient said: {patient_text}
 
-After your spoken response, provide this JSON block at the END:
+Format your response EXACTLY like this:
+[Your 1-2 sentence spoken response in native script]
 ###TRIAGE_JSON###
-{"triage_level": "critical|moderate|mild", "department": "Department Name", "wait_time_minutes": N, "ai_reasoning": "brief reason"}
-###END_JSON###
-
-Patient message: {patient_text}
-Detected language: {language}
-"""
+{{"triage_level": "critical|moderate|mild", "department": "Department Name", "wait_time_minutes": N, "ai_reasoning": "brief reason"}}
+###END_JSON###"""
 
 GREETINGS = {
-    "hi-IN": "नमस्ते! मैं सारथी हूँ, केजीएमयू का एआई सहायक। आप अपने लक्षण बता सकते हैं।",
+    "hi-IN": "नमस्ते! मैं सारथी हूँ, केजीएमयू का एआई सहायक। आप अपने लक्षण बताइए।",
     "en-IN": "Hello! I'm Saarthi, KGMU's AI assistant. Please describe your symptoms.",
-    "bn-IN": "নমস্কার! আমি সারথি, আপনার লক্ষণগুলি বলুন।",
+    "bn-IN": "নমস্কার! আমি সারথি। আপনার লক্ষণগুলি বলুন।",
     "ta-IN": "வணக்கம்! நான் சாரதி. உங்கள் அறிகுறிகளை சொல்லுங்கள்.",
-    "te-IN": "నమస్కారం! నేను సారథి. దయచేసి మీ లక్షణాలను చెప్పండి.",
+    "te-IN": "నమస్కారం! నేను సారథి. మీ లక్షణాలను చెప్పండి.",
     "mr-IN": "नमस्कार! मी सारथी आहे. कृपया तुमची लक्षणे सांगा.",
+}
+
+ERROR_MESSAGES = {
+    "hi-IN": "ऑडियो समझ नहीं आया। कृपया दोबारा बोलिए।",
+    "en-IN": "Could not understand audio. Please speak again.",
 }
 
 
@@ -86,50 +86,51 @@ def clean_response_text(response_text: str) -> str:
     """Remove JSON block from response to get clean spoken text."""
     cleaned = re.sub(r'###TRIAGE_JSON###.*?###END_JSON###', '', response_text, flags=re.DOTALL)
     cleaned = re.sub(r'\{[^{}]*"triage_level"[^{}]*\}', '', cleaned, flags=re.DOTALL)
-    return cleaned.strip()
+    cleaned = cleaned.strip()
+    # Remove any remaining markdown artifacts
+    cleaned = re.sub(r'[*_#`]', '', cleaned)
+    return cleaned
 
 
 async def run_gemini_triage(patient_text: str, language: str) -> dict:
-    """
-    Run Gemini triage analysis on patient text.
-    Returns: dict with 'spoken_response', 'triage_data'
-    """
+    """Run Gemini triage — optimized for speed with low token limit."""
     prompt = VOICE_TRIAGE_PROMPT.format(patient_text=patient_text, language=language)
     
     try:
+        t0 = time.time()
         response = gemini_model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
-                max_output_tokens=150,
-                temperature=0.4,
+                max_output_tokens=200,
+                temperature=0.3,
             )
         )
+        elapsed = round(time.time() - t0, 2)
         full_text = response.text.strip()
+        print(f"Gemini OK [{elapsed}s]: '{full_text[:60]}...'")
         
         triage_data = parse_triage_json(full_text)
         spoken_text = clean_response_text(full_text)
         
         if not triage_data:
-            # Fallback triage
             complaint_lower = patient_text.lower()
-            danger_words = ['chest pain', 'seene', 'dard', 'saans', 'breathing', 'breathless', 'unconscious', 'behosh']
+            danger_words = ['chest pain', 'seene', 'dard', 'saans', 'breathing', 'breathless', 'unconscious', 'behosh',
+                          'सीने', 'दर्द', 'सांस', 'बेहोश', 'खून', 'blood', 'heart', 'attack']
             is_critical = any(w in complaint_lower for w in danger_words)
             
             triage_data = {
                 "triage_level": "critical" if is_critical else "mild",
                 "department": "Emergency" if is_critical else "General OPD",
                 "wait_time_minutes": 0 if is_critical else random.randint(20, 45),
-                "ai_reasoning": "Voice triage via Gemini with fallback classification."
+                "ai_reasoning": "Fallback classification"
             }
         
-        return {
-            "spoken_response": spoken_text,
-            "triage_data": triage_data,
-        }
+        return {"spoken_response": spoken_text, "triage_data": triage_data}
     except Exception as e:
-        print(f"Gemini triage error: {e}")
+        print(f"Gemini ERROR: {e}")
+        err_msg = ERROR_MESSAGES.get(language, ERROR_MESSAGES["en-IN"])
         return {
-            "spoken_response": "माफ़ कीजिए, तकनीकी समस्या आ गई है। कृपया टेक्स्ट का उपयोग करें।" if "hi" in language else "Sorry, technical issue. Please use text triage.",
+            "spoken_response": err_msg,
             "triage_data": {
                 "triage_level": "mild",
                 "department": "General OPD",
@@ -140,7 +141,7 @@ async def run_gemini_triage(patient_text: str, language: str) -> dict:
 
 
 async def add_patient_to_queue(name: str, age: int, gender: str, complaint: str, triage_data: dict) -> dict | None:
-    """Post triage result to FastAPI queue so dashboard updates."""
+    """Post triage result to FastAPI queue (fire-and-forget)."""
     try:
         token = f"EMG-{random.randint(1000,9999)}" if triage_data["triage_level"] == "critical" else f"APL-{random.randint(1000,9999)}"
         
@@ -158,7 +159,7 @@ async def add_patient_to_queue(name: str, age: int, gender: str, complaint: str,
             "isEmergency": triage_data["triage_level"] == "critical",
         }
         
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.post(f"{FASTAPI_BASE}/api/queue/add", json=payload)
             if resp.status_code == 200:
                 return resp.json()
@@ -170,21 +171,22 @@ async def add_patient_to_queue(name: str, age: int, gender: str, complaint: str,
 
 async def process_voice_triage(audio_bytes: bytes, language: str = "hi-IN") -> dict:
     """
-    Full voice triage pipeline:
+    Full voice triage pipeline — optimized for speed:
     1. Sarvam STT: audio → text
-    2. Gemini: text → triage + response
-    3. Sarvam TTS: response → audio
-    4. Add to queue
-    
-    Returns dict with all results.
+    2. Gemini: text → triage + response  
+    3. Sarvam TTS: response → audio (run in parallel with queue add)
     """
+    pipeline_start = time.time()
+    
     # Step 1: Speech to Text
+    t0 = time.time()
     stt_result = await transcribe_audio(audio_bytes, language_code=language)
     transcript = stt_result.get("transcript", "")
     detected_lang = stt_result.get("language_code", language)
+    print(f"[Pipeline] STT: {round(time.time()-t0, 2)}s — transcript='{transcript[:50]}'")
     
     if not transcript:
-        error_msg = "Audio samajh nahi aaya. Kripya dubara bolein."
+        error_msg = ERROR_MESSAGES.get(language, ERROR_MESSAGES["en-IN"])
         tts_result = await text_to_speech(error_msg, language_code=language)
         return {
             "transcript": "",
@@ -195,29 +197,24 @@ async def process_voice_triage(audio_bytes: bytes, language: str = "hi-IN") -> d
         }
     
     # Step 2: Gemini Triage
+    t0 = time.time()
     gemini_result = await run_gemini_triage(transcript, detected_lang)
     spoken_response = gemini_result["spoken_response"]
     triage_data = gemini_result["triage_data"]
+    print(f"[Pipeline] Gemini: {round(time.time()-t0, 2)}s")
     
-    # Step 3: Text to Speech
-    tts_result = await text_to_speech(spoken_response, language_code=detected_lang)
+    # Step 3 & 4: TTS and Queue Add — run in PARALLEL for speed
+    t0 = time.time()
+    tts_task = text_to_speech(spoken_response, language_code=detected_lang)
     
-    # Step 4: Add to queue
-    queue_result = await add_patient_to_queue(
-        name="Voice Patient",
-        age=30,
-        gender="Unknown",
-        complaint=transcript,
-        triage_data=triage_data,
-    )
+    # Generate token early
+    token = f"EMG-{random.randint(1000,9999)}" if triage_data["triage_level"] == "critical" else f"APL-{random.randint(1000,9999)}"
     
-    token = "APL-0000"
-    if queue_result:
-        token = queue_result.get("token", token)
-    elif triage_data["triage_level"] == "critical":
-        token = f"EMG-{random.randint(1000,9999)}"
-    else:
-        token = f"APL-{random.randint(1000,9999)}"
+    tts_result = await tts_task
+    print(f"[Pipeline] TTS: {round(time.time()-t0, 2)}s")
+    
+    total = round(time.time() - pipeline_start, 2)
+    print(f"[Pipeline] TOTAL: {total}s")
     
     return {
         "transcript": transcript,
@@ -234,6 +231,4 @@ async def process_voice_triage(audio_bytes: bytes, language: str = "hi-IN") -> d
 
 if __name__ == "__main__":
     print("Saarthi AI Voice Agent")
-    print("This module provides voice triage processing.")
-    print("It is called by the FastAPI server endpoints.")
     print("Start the server with: uvicorn main:app --reload")

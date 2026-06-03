@@ -96,8 +96,8 @@ export default function VoiceAgent() {
 
       // Try to get LiveKit token & greeting
       let greetingText = lang === 'hi-IN' 
-        ? 'Namaste! Main Saarthi hun, KGMU ka AI sahayak. Aap apne symptoms Hindi ya English mein bata sakte hain.' 
-        : 'Hello! I\'m Saarthi, KGMU\'s AI assistant. Please describe your symptoms and I\'ll help route you to the right department.';
+        ? 'नमस्ते! मैं सारथी हूँ, केजीएमयू का एआई सहायक। आप अपने लक्षण बताइए।' 
+        : 'Hello! I\'m Saarthi, KGMU\'s AI assistant. Please describe your symptoms.';
 
       try {
         const tokenRes = await fetch(`${API_BASE}/api/livekit/token?language=${lang}`);
