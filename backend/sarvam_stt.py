@@ -104,7 +104,7 @@ async def transcribe_audio(
     }
     
     form_data = {
-        "model": "saaras:v2",
+        "model": "saaras:v3",
         "with_timestamps": "false",
     }
     
@@ -135,27 +135,6 @@ async def transcribe_audio(
             else:
                 error_text = response.text[:300]
                 print(f"Sarvam STT error: {response.status_code} — {error_text}")
-                
-                # If model not available, try v2
-                if "saaras:v3" in str(form_data.get("model", "")) and response.status_code in [400, 422]:
-                    print("Retrying with saaras:v2...")
-                    form_data["model"] = "saaras:v2"
-                    files = {
-                        "file": (upload_filename, io.BytesIO(audio_bytes), content_type),
-                    }
-                    retry_response = await client.post(
-                        STT_ENDPOINT,
-                        headers=headers,
-                        data=form_data,
-                        files=files,
-                    )
-                    if retry_response.status_code == 200:
-                        result = retry_response.json()
-                        return {
-                            "transcript": result.get("transcript", ""),
-                            "language_code": result.get("language_code", language_code),
-                        }
-                
                 return {
                     "transcript": "",
                     "language_code": language_code,

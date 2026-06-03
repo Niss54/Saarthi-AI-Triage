@@ -28,7 +28,7 @@ SPEAKERS = {
 }
 
 # Model fallback order
-TTS_MODELS = ["bulbul:v2", "bulbul:v1"]
+TTS_MODELS = ["bulbul:v3", "bulbul:v2"]
 
 
 async def text_to_speech(
