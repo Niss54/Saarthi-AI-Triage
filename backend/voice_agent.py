@@ -28,25 +28,22 @@ gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
 FASTAPI_BASE = "http://localhost:8000"
 
-VOICE_TRIAGE_PROMPT = """You are Saarthi, an AI medical triage assistant at KGMU (King George's Medical University) Lucknow hospital. A patient is speaking to you via voice. Your job:
+VOICE_TRIAGE_PROMPT = """You are Saarthi, an AI medical triage assistant at KGMU Lucknow. A patient is speaking to you via voice. Your job:
 
-1. Listen to their symptoms carefully
-2. Ask ONE follow-up question if needed (not more)
-3. Determine: severity (critical/moderate/mild), department, urgency reason
-4. Respond conversationally in the SAME LANGUAGE the patient used
+1. Listen to symptoms carefully.
+2. Ask ONE short follow-up question if needed (not more).
+3. Determine: severity (critical/moderate/mild), department, urgency reason.
+4. Respond in the SAME LANGUAGE as the patient.
 
-For critical cases, say clearly and calmly:
-"Aapki sthiti gambhir hai. Kripya turant Emergency vibhag mein jaayein. Aapka emergency token generate ho gaya hai."
+CRITICAL INSTRUCTION FOR PRONUNCIATION: 
+You MUST write your response in the NATIVE SCRIPT of the language (e.g., use Devanagari script for Hindi "आप कैसे हैं", not Latin script "Aap kaise hain"). The TTS engine requires native script to pronounce correctly.
 
-For normal cases, give department + estimated wait time.
+For critical cases in Hindi, say: "आपकी स्थिति गंभीर है। कृपया तुरंत इमरजेंसी विभाग में जाएं।"
+For normal cases, tell them the department and wait time.
 
-Keep responses SHORT (2-3 sentences max).
-This is voice — no bullet points, no markdown.
-Speak like a calm, professional hospital assistant.
+Keep responses VERY SHORT (1-2 sentences max) for fast processing. No markdown.
 
-Departments available: Emergency, Medicine, Orthopaedics, Gynaecology, Paediatrics, ENT, Eye OPD, Dermatology, General OPD, Cardiology, Neurology, Pulmonology, Surgery
-
-After analyzing symptoms, also provide a JSON block at the END of your response in this exact format:
+After your spoken response, provide this JSON block at the END:
 ###TRIAGE_JSON###
 {"triage_level": "critical|moderate|mild", "department": "Department Name", "wait_time_minutes": N, "ai_reasoning": "brief reason"}
 ###END_JSON###
@@ -56,12 +53,12 @@ Detected language: {language}
 """
 
 GREETINGS = {
-    "hi-IN": "Namaste! Main Saarthi hun, KGMU ka AI sahayak. Aap apne symptoms Hindi ya English mein bata sakte hain.",
-    "en-IN": "Hello! I'm Saarthi, KGMU's AI assistant. Please describe your symptoms and I'll help route you to the right department.",
-    "bn-IN": "Nomoshkar! Ami Saarthi, KGMU-r AI sohayok. Apnar symptoms bolen, ami sahajjo korbo.",
-    "ta-IN": "Vanakkam! Naan Saarthi, KGMU-vin AI udhaviyalar. Ungal arivigalai sollunga.",
-    "te-IN": "Namaskaram! Nenu Saarthi, KGMU AI sahayakudu. Mee symptoms cheppandi.",
-    "mr-IN": "Namaskar! Mi Saarthi aahe, KGMU cha AI sahayak. Tumche symptoms sanga.",
+    "hi-IN": "नमस्ते! मैं सारथी हूँ, केजीएमयू का एआई सहायक। आप अपने लक्षण बता सकते हैं।",
+    "en-IN": "Hello! I'm Saarthi, KGMU's AI assistant. Please describe your symptoms.",
+    "bn-IN": "নমস্কার! আমি সারথি, আপনার লক্ষণগুলি বলুন।",
+    "ta-IN": "வணக்கம்! நான் சாரதி. உங்கள் அறிகுறிகளை சொல்லுங்கள்.",
+    "te-IN": "నమస్కారం! నేను సారథి. దయచేసి మీ లక్షణాలను చెప్పండి.",
+    "mr-IN": "नमस्कार! मी सारथी आहे. कृपया तुमची लक्षणे सांगा.",
 }
 
 
@@ -100,7 +97,13 @@ async def run_gemini_triage(patient_text: str, language: str) -> dict:
     prompt = VOICE_TRIAGE_PROMPT.format(patient_text=patient_text, language=language)
     
     try:
-        response = gemini_model.generate_content(prompt)
+        response = gemini_model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=150,
+                temperature=0.4,
+            )
+        )
         full_text = response.text.strip()
         
         triage_data = parse_triage_json(full_text)
@@ -126,7 +129,7 @@ async def run_gemini_triage(patient_text: str, language: str) -> dict:
     except Exception as e:
         print(f"Gemini triage error: {e}")
         return {
-            "spoken_response": "Maaf kijiye, technical issue ho gaya. Kripya text triage use karein.",
+            "spoken_response": "माफ़ कीजिए, तकनीकी समस्या आ गई है। कृपया टेक्स्ट का उपयोग करें।" if "hi" in language else "Sorry, technical issue. Please use text triage.",
             "triage_data": {
                 "triage_level": "mild",
                 "department": "General OPD",
