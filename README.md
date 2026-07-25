@@ -1,192 +1,291 @@
-[
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-]()
-[
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-]()
-[
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-]()
-[
-![Google Gemini](https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)
-]()
-[
-![LiveKit](https://img.shields.io/badge/LiveKit-FF6B35?style=for-the-badge&logo=webrtc&logoColor=white)
-]()
-[
-![Sarvam AI](https://img.shields.io/badge/Sarvam_AI-FF4B4B?style=for-the-badge&logo=ai&logoColor=white)
-]()
-[
-![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
-]()
-[
-![APL 2025](https://img.shields.io/badge/APL_2025-Healthcare_Track-green?style=for-the-badge)
-]()
+<!-- Banner -->
+<div align="center">
+
+<img src="https://img.shields.io/badge/APL-2025-red?style=for-the-badge" />
+<img src="https://img.shields.io/badge/Track-Healthcare-brightgreen?style=for-the-badge" />
+<img src="https://img.shields.io/badge/Team-Syntrix-blueviolet?style=for-the-badge" />
 
 # 🏥 Saarthi AI
-## Intelligent OPD Triage & Queue Management for KGMU Lucknow
-### AI-Powered Patient Triage Agent | Team Syntrix | APL 2025
+### *Intelligent OPD Triage & Queue Management for KGMU Lucknow*
 
-> "5,000 patients walk into KGMU every day. 
->  Saarthi AI ensures the most critical ones 
->  are never lost in the queue."
+> **"5,000 patients walk into KGMU every day. Saarthi AI ensures the most critical ones are never lost in the queue."**
 
-## 1. Problem Statement
-- KGMU handles 5000+ OPD patients daily
-- No intelligent prioritization system
-- Critical cardiac patients wait with minor cases
-- Manual triage = slow, error-prone, life-threatening
-- Lucknow Civil Hospital faces same challenge
+[![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Gemini AI](https://img.shields.io/badge/Gemini_AI-4285F4?style=flat-square&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![LiveKit](https://img.shields.io/badge/LiveKit-FF5722?style=flat-square&logo=webrtc&logoColor=white)](https://livekit.io/)
+[![Sarvam AI](https://img.shields.io/badge/Sarvam_AI-FF6B35?style=flat-square)](https://sarvam.ai/)
+[![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=flat-square&logo=socket.io&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
 
-## 2. Solution Overview
-- Saarthi AI: WhatsApp-style pre-triage chatbot
-- Gemini AI classifies symptoms in real-time
-- Critical cases → Emergency in 0-3 minutes
-- Real-time admin dashboard for hospital staff
-- Voice triage in Hindi + 8 Indian languages
-- Prescription OCR — upload photo, get triaged
+[🚀 Live Demo](#) · [📖 Documentation](#) · [🐛 Report Bug](https://github.com/Niss54/Saarthi-AI-Triage/issues) · [💡 Request Feature](https://github.com/Niss54/Saarthi-AI-Triage/issues)
 
-## 3. Demo Video
-[📹 Watch Demo](YOUR_LINK_HERE)
+</div>
 
-## 4. Key Features
-- 🚨 **Emergency Escalation** — Critical cases bypass queue instantly
-- 🤖 **Gemini AI Triage** — Symptom analysis in seconds  
-- 🎙️ **Hindi Voice Agent** — Speak symptoms, get routed
-- 📋 **Prescription OCR** — Upload prescription photo for auto-triage
-- 📊 **Live Admin Dashboard** — Real-time queue war room
-- ⚡ **WebSocket Updates** — Queue changes appear instantly
-- 🖨️ **Token Slip** — Printable OPD token with doctor + room
-- 🏥 **KGMU Specific** — 8 departments, 24 doctors, real room numbers
+---
 
-## 5. Agent Workflow
-**5 AI Agents Working Together**
+## 📋 Table of Contents
 
-```mermaid
-graph LR
-    A[🧑 Patient Input\nText / Voice / Image] --> B[📥 Intake Agent\nSymptom Collection]
-    B --> C[🔍 Risk Triage Agent\nGemini AI Analysis]
-    C --> D{Severity?}
-    D -->|Critical| E[🚨 Emergency Agent\nPriority Override\nEMG Token]
-    D -->|Moderate/Low| F[🏥 Department Router\nAssign Dept + Doctor]
-    E --> G[📋 Handoff Agent\nToken + Room + ETA]
-    F --> G
-    G --> H[📊 Dashboard Update\nWebSocket Broadcast]
-```
+- [Problem Statement](#1-problem-statement)
+- [Solution Overview](#2-solution-overview)
+- [Key Features](#3-key-features)
+- [Tech Stack](#4-tech-stack)
+- [Agent Workflow](#5-agent-workflow)
+- [System Architecture](#6-system-architecture)
+- [Getting Started](#7-getting-started)
+- [Screenshots](#8-screenshots)
+- [Team](#9-team)
+- [License](#10-license)
 
-## 6. System Architecture
+---
 
-```mermaid
-graph TB
-    subgraph Frontend ["🖥️ Frontend — React + Vite + TypeScript"]
-        A[WhatsApp Chat UI] 
-        B[Voice Agent — Web Speech API]
-        C[Prescription OCR Upload]
-        D[Admin Dashboard]
-        E[Live Queue Board]
-    end
-    
-    subgraph Backend ["⚙️ Backend — FastAPI + Python"]
-        F[Triage Engine]
-        G[Doctor Assignment]
-        H[OCR Endpoint]
-        I[WebSocket Server]
-        J[Queue Manager]
-    end
-    
-    subgraph AI ["🤖 AI Layer"]
-        K[Google Gemini 1.5 Flash\nTriage + OCR + Insights]
-        L[Sarvam AI\nHindi STT + TTS]
-        M[LiveKit\nReal-time Voice]
-    end
-    
-    A --> F
-    B --> L
-    L --> F
-    C --> H
-    H --> K
-    F --> K
-    K --> G
-    G --> J
-    J --> I
-    I --> D
-    I --> E
-```
+## 1. 🚨 Problem Statement
 
-## 7. Tech Stack
-| Component | Technology |
-|---|---|
-| Frontend | React, TypeScript, Vite, Tailwind CSS |
-| Backend | FastAPI, Python, WebSockets |
-| Primary AI | Google Gemini 1.5 Flash |
-| Voice STT/TTS | Sarvam AI (bulbul:v1, saaras:v1) |
-| Voice Infrastructure | LiveKit WebRTC |
-| Charts | Recharts |
-| Real-time | WebSockets |
-| OCR | Gemini Vision API |
+**KGMU (King George's Medical University), Lucknow** is one of North India's busiest hospitals, handling a massive daily patient load:
 
-## 8. Setup & Run
+| Challenge | Impact |
+|-----------|--------|
+| 🏥 5,000+ OPD patients daily | Extreme overcrowding |
+| ❌ No intelligent prioritization system | Critical cases missed |
+| ⚠️ Manual triage process | Slow & error-prone |
+| 💔 Cardiac patients wait with minor cases | Life-threatening delays |
+| 🏙️ Lucknow Civil Hospital faces same challenge | Systemic problem |
 
-### Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-pip install -r requirements.txt
-# Set environment variables in .env (GEMINI_API_KEY, SARVAM_API_KEY, LIVEKIT_*)
-uvicorn main:app --reload --port 8000
-```
+> Manual triage is **slow**, **error-prone**, and in a high-stakes environment like this — **life-threatening**.
+
+---
+
+## 2. 💡 Solution Overview
+
+**Saarthi AI** is an intelligent, multi-modal patient triage agent that automatically prioritizes patients based on symptom severity using AI — so the right patient gets help at the right time.
+
+### What It Does
+
+- 🎙️ **Accepts patient input** via Text, Voice (Hindi + English), or Prescription Image
+- 🤖 **AI-powered triage** using Gemini AI to analyze symptom severity
+- 🚨 **Emergency escalation** — critical patients bypass queue and receive EMG tokens instantly
+- 🏥 **Smart routing** — assigns departments and doctors based on condition
+- 📡 **Real-time dashboard** — live queue updates via WebSocket for hospital staff
+- 📜 **Prescription OCR** — reads physical prescriptions and auto-fills patient data
+
+---
+
+## 3. ✨ Key Features
+
+### 🗣️ Multi-Modal Patient Intake
+- Voice input in **Hindi & English** powered by Sarvam AI (STT + TTS)
+- WhatsApp-style chat interface for patient-facing interaction
+- OCR-based prescription upload for quick history capture
+
+### 🧠 AI-Driven Risk Assessment
+- Gemini AI analyzes symptoms, vitals, and medical history
+- Classifies into **Critical / Moderate / Low** severity in real-time
+- NLP-powered contextual understanding of patient descriptions
+
+### 🚑 Emergency Protocol
+- **Critical patients** get EMG (Emergency) tokens with priority override
+- Instant notification to emergency department
+- Zero queue wait for life-threatening cases
+
+### 📊 Live Hospital Dashboard
+- WebSocket-powered real-time queue visualization
+- Doctor and room assignment displayed per patient
+- ETA estimation for waiting patients
+- Staff can see patient severity at a glance
+
+### 🌐 Hindi-First Accessibility
+- Entire patient flow available in Hindi via Sarvam AI
+- Designed for semi-urban and rural patients unfamiliar with English
+- Voice-based interaction requires zero digital literacy
+
+---
+
+## 4. 🛠️ Tech Stack
 
 ### Frontend
+| Technology | Purpose |
+|-----------|---------|
+| React + Vite + TypeScript | Core web application |
+| Web Speech API | Browser-native voice agent |
+| WebSocket Client | Real-time queue updates |
+| WhatsApp Chat UI | Patient-friendly interface |
+
+### Backend
+| Technology | Purpose |
+|-----------|---------|
+| FastAPI + Python | REST API & WebSocket server |
+| Triage Engine | Symptom analysis & scoring |
+| OCR Endpoint | Prescription image processing |
+
+### AI Layer
+| Technology | Purpose |
+|-----------|---------|
+| Gemini AI | Symptom analysis & NLP |
+| Sarvam AI | Hindi STT (Speech-to-Text) + TTS |
+| LiveKit | Real-time audio/video streaming |
+
+---
+
+## 5. 🤖 Agent Workflow
+
+> **5 AI Agents Working Together in a Coordinated Pipeline**
+
+```
+Patient Input          Intake Agent         Risk Triage Agent
+(Text/Voice/Image) ──► Symptom Collection ──► Gemini AI Analysis
+                                                      │
+                                              ┌───────▼────────┐
+                                              │   Severity?    │
+                                              └───────┬────────┘
+                                                      │
+                          ┌───────────────────────────┤
+                          │                           │
+                    CRITICAL ▼                MODERATE/LOW ▼
+              Emergency Agent           Department Router Agent
+            Priority Override           Assign Dept + Doctor
+              EMG Token                         │
+                          │                     │
+                          └─────────┬───────────┘
+                                    │
+                             Handoff Agent
+                          Token + Room + ETA
+                                    │
+                             Dashboard Agent
+                              WebSocket Live
+```
+
+### Agent Descriptions
+
+| Agent | Role |
+|-------|------|
+| **Intake Agent** | Collects patient symptoms via text, voice, or image |
+| **Risk Triage Agent** | Runs Gemini AI analysis on all inputs |
+| **Emergency Agent** | Triggers priority override for critical cases |
+| **Department Router** | Routes moderate/low cases to correct dept + doctor |
+| **Handoff Agent** | Generates token, room assignment, and ETA |
+| **Dashboard Agent** | Pushes live updates via WebSocket to hospital screen |
+
+---
+
+## 6. 🏗️ System Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                  Frontend — React + Vite + TypeScript        │
+│    ┌─────────────────────┐    ┌────────────────────────┐     │
+│    │  Voice Agent         │    │  WhatsApp Chat UI      │     │
+│    │  (Web Speech API)   │    │  Prescription OCR      │     │
+│    └─────────┬───────────┘    └──────────┬─────────────┘     │
+└──────────────┼──────────────────────────┼────────────────────┘
+               │                          │
+┌──────────────▼──────────────────────────▼────────────────────┐
+│                Backend — FastAPI + Python                     │
+│         ┌────────────────┐  ┌──────────────────┐             │
+│         │  Triage Engine  │  │  OCR Endpoint    │             │
+│         └────────┬───────┘  └─────────┬────────┘             │
+└──────────────────┼─────────────────────┼────────────────────-┘
+                   │                     │
+┌──────────────────▼─────────────────────▼────────────────────┐
+│                    AI Layer                                   │
+│    ┌──────────────────────┐   ┌──────────────────────────┐   │
+│    │  Gemini AI           │   │  Sarvam AI               │   │
+│    │  (Symptom Analysis)  │   │  (Hindi STT + TTS)       │   │
+│    └──────────────────────┘   └──────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 7. 🚀 Getting Started
+
+### Prerequisites
+
 ```bash
+node >= 18.0.0
+python >= 3.10
+pip
+```
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/Niss54/Saarthi-AI-Triage.git
+cd Saarthi-AI-Triage
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
 npm install
 npm run dev
 ```
 
-### Voice Agent Setup
-Ensure backend is running (provides LiveKit token and Sarvam STT/TTS).
-Go to `http://localhost:5173/voice-agent` to test the voice capabilities.
+### Backend Setup
 
-## 9. API Reference
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/triage` | POST | Gemini triage |
-| `/api/ocr-triage` | POST | Prescription image triage |
-| `/api/queue` | GET | All patients |
-| `/api/queue/add` | POST | Add patient |
-| `/api/departments` | GET | Department list |
-| `/api/stats` | GET | Hospital stats |
-| `/api/insights` | GET | AI insights |
-| `/api/livekit/token` | GET | Voice room token |
-| `/ws/queue` | WS | Real-time updates |
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
 
-## 10. Demo Scenarios
+### Environment Variables
 
-**🚨 Critical:**
-- **Input:** "Mere seene mein tej dard hai"
-- **Output:** EMG token, Emergency Bay, 0-3 min
+Create a `.env` file in the root directory:
 
-**⚠️ Moderate:**
-- **Input:** "5 din se bukhar hai"
-- **Output:** OPD token, General Medicine, ~28 min
+```env
+GEMINI_API_KEY=your_gemini_api_key
+SARVAM_API_KEY=your_sarvam_api_key
+LIVEKIT_API_KEY=your_livekit_api_key
+LIVEKIT_API_SECRET=your_livekit_api_secret
+```
 
-**📋 OCR:**
-- **Input:** Prescription photo upload
-- **Output:** Auto-extracted symptoms, triage result
+> ⚠️ Never commit your `.env` file. It is already included in `.gitignore`.
 
-## 11. Impact
-- Automated critical case detection with priority escalation
-- Significant reduction in triage time for time-sensitive cases
-- Designed to scale with KGMU infrastructure
-- Multilingual support for UP patient population
+---
 
-## 12. Roadmap
-- [ ] Real WhatsApp Business API Integration
-- [ ] EHR / Hospital Management System Integration
-- [ ] ML-based wait time prediction from historical data
-- [ ] Automated SMS/WhatsApp notifications
-- [ ] Expansion to Lucknow Civil Hospital
-- [ ] Offline mode for low-connectivity areas
+## 8. 📸 Screenshots
 
-## 13. Team
-**Team Syntrix | APL 2025 | Google Developer Groups Lucknow**
+### OPD Dashboard — Live Queue View
+> Real-time patient queue with severity indicators and department routing
+
+### Patient Intake — Voice Mode
+> Hindi voice interface powered by Sarvam AI
+
+### Emergency Protocol
+> Critical patient EMG token generation with priority override
+
+---
+
+## 9. 👥 Team
+
+**Team Syntrix** — APL 2025, Healthcare Track
+
+| Member | Role |
+|--------|------|
+| **Nishant Maurya** | Full Stack Lead, AI Integration |
+| *(Add teammates)* | *(Add roles)* |
+
+---
+
+## 10. 📄 License
+
+This project was built for **APL 2025 — Healthcare Track** as a competitive hackathon submission.
+
+```
+MIT License — see LICENSE file for details
+```
+
+---
+
+<div align="center">
+
+**Built with ❤️ for KGMU Lucknow — because every second counts.**
+
+[![GitHub](https://img.shields.io/badge/GitHub-Niss54-181717?style=flat-square&logo=github)](https://github.com/Niss54)
+[![Portfolio](https://img.shields.io/badge/Portfolio-nissh.info-blueviolet?style=flat-square)](https://nissh.info)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-niss--visuals-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/niss-visuals)
+
+*"Intelligent triage. Zero delay. Every life matters."*
+
+</div>
