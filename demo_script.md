@@ -10,7 +10,7 @@
 **0:45 - 1:30 (Patient Portal Scenario)**
 *(Switch to Patient Portal tab `http://localhost:5173/patient`)*
 "Let's see the patient experience. A patient scans a QR code and opens this WhatsApp-style bot. I'll enter a critical scenario: 
-- **Name:** Suresh
+- **Name:** naman
 - **Age:** 58
 - **Complaint:** Seene mein tej dard (severe chest pain)
 - **Duration:** 1-3 days
