@@ -1,11 +1,11 @@
 <!-- Banner -->
 <div align="center">
 
-<img src="https://img.shields.io/badge/APL-2025-red?style=for-the-badge" />
+<img src="https://img.shields.io/badge/APL-2026-red?style=for-the-badge" />
 <img src="https://img.shields.io/badge/Track-Healthcare-brightgreen?style=for-the-badge" />
 <img src="https://img.shields.io/badge/Team-Syntrix-blueviolet?style=for-the-badge" />
 
-# 🏥 Saarthi AI
+#  Saarthi AI
 ### *Intelligent OPD Triage & Queue Management for KGMU Lucknow*
 
 > **"5,000 patients walk into KGMU every day. Saarthi AI ensures the most critical ones are never lost in the queue."**
