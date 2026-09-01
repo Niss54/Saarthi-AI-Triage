@@ -1,5 +1,5 @@
 export type TriageLevel = 'critical' | 'moderate' | 'mild';
-export type PatientStatus = 'waiting' | 'called' | 'in-consultation' | 'done';
+export type PatientStatus = 'waiting' | 'called' | 'in-consultation' | 'done' | string;
 export type UrgencyLevel = 'immediate' | 'urgent' | 'semi-urgent' | 'non-urgent';
 
 export interface Patient {
@@ -104,6 +104,7 @@ export interface StatsData {
   criticalCount: number;
   activeDepartments: number;
   fastTrackCount?: number;
+  doctorsOnDuty?: number;
 }
 
 export interface WaitTimeResult {
