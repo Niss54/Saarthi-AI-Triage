@@ -22,7 +22,7 @@
 
 </div>
 
----
+
 
 ## 📋 Table of Contents
 
@@ -37,7 +37,7 @@
 - [Team](#9-team)
 - [License](#10-license)
 
----
+
 
 ## 1. 🚨 Problem Statement
 
@@ -68,7 +68,7 @@
 - 📡 **Real-time dashboard** — live queue updates via WebSocket for hospital staff
 - 📜 **Prescription OCR** — reads physical prescriptions and auto-fills patient data
 
----
+
 
 ## 3. ✨ Key Features
 
