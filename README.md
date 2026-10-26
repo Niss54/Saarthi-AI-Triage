@@ -53,7 +53,7 @@
 
 > Manual triage is **slow**, **error-prone**, and in a high-stakes environment like this — **life-threatening**.
 
----
+
 
 ## 2. 💡 Solution Overview
 
@@ -98,7 +98,7 @@
 - Designed for semi-urban and rural patients unfamiliar with English
 - Voice-based interaction requires zero digital literacy
 
----
+
 
 ## 4. 🛠️ Tech Stack
 
@@ -124,7 +124,7 @@
 | Sarvam AI | Hindi STT (Speech-to-Text) + TTS |
 | LiveKit | Real-time audio/video streaming |
 
----
+
 
 ## 5. 🤖 Agent Workflow
 
@@ -165,7 +165,7 @@ Patient Input          Intake Agent         Risk Triage Agent
 | **Handoff Agent** | Generates token, room assignment, and ETA |
 | **Dashboard Agent** | Pushes live updates via WebSocket to hospital screen |
 
----
+
 
 ## 6. 🏗️ System Architecture
 
@@ -194,7 +194,7 @@ Patient Input          Intake Agent         Risk Triage Agent
 └──────────────────────────────────────────────────────────────┘
 ```
 
----
+
 
 ## 7. 🚀 Getting Started
 
@@ -242,7 +242,7 @@ LIVEKIT_API_SECRET=your_livekit_api_secret
 
 > ⚠️ Never commit your `.env` file. It is already included in `.gitignore`.
 
----
+
 
 ## 8. 📸 Screenshots
 
@@ -266,7 +266,7 @@ LIVEKIT_API_SECRET=your_livekit_api_secret
 | **Nishant Maurya** | Full Stack Lead, AI Integration |
 | *(Add teammates)* | *(Add roles)* |
 
----
+
 
 ## 10. 📄 License
 
@@ -276,7 +276,7 @@ This project was built for **APL 2025 — Healthcare Track** as a competitive ha
 MIT License — see LICENSE file for details
 ```
 
----
+
 
 <div align="center">
 
